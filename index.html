@@ -431,6 +431,28 @@ async function searchAll() {
   document.getElementById('searchBtn').disabled = false;
 }
 
+// Simplify query: strip product type suffixes and pull meaningful keywords
+function buildSearchTerms(query) {
+  // Remove common suffixes that confuse the set search
+  const cleaned = query
+    .replace(/booster box|booster pack|elite trainer box|etb|tin|bundle|collection box|set|sealed/gi, '')
+    .replace(/[-–—:|,]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const terms = [];
+  // Try progressively shorter versions
+  const words = cleaned.split(' ').filter(w => w.length > 1);
+  if (words.length > 2) terms.push(words.slice(0, 3).join(' '));
+  if (words.length > 1) terms.push(words.slice(0, 2).join(' '));
+  if (words.length > 0) terms.push(words[0]);
+  // Also try original minus everything after a dash/colon
+  const short = query.split(/[-–—:|]/)[0].trim();
+  if (short && short !== query && !terms.includes(short)) terms.unshift(short);
+  // Dedupe
+  return [...new Set(terms)].filter(Boolean);
+}
+
 async function searchOne(query) {
   const container = document.getElementById('results');
   const card = document.createElement('div');
@@ -443,18 +465,39 @@ async function searchOne(query) {
   container.appendChild(card);
 
   try {
-    const res = await fetch(`${BASE}/${CAT}/search?q=${encodeURIComponent(query)}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    const sets = (data.sets || []).slice(0, 4);
+    // Try multiple search terms until we get sets
+    const searchTerms = buildSearchTerms(query);
+    let sets = [];
+    let usedTerm = query;
+    for (const term of searchTerms) {
+      const res = await fetch(`${BASE}/${CAT}/search?q=${encodeURIComponent(term)}`);
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.sets && data.sets.length) {
+        sets = data.sets.slice(0, 4);
+        usedTerm = term;
+        break;
+      }
+    }
+    // Fallback: try original query
+    if (!sets.length) {
+      const res = await fetch(`${BASE}/${CAT}/search?q=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const data = await res.json();
+        sets = (data.sets || []).slice(0, 4);
+      }
+    }
 
     if (!sets.length) {
-      card.innerHTML = `<div class="result-header"><span class="result-query">${esc(query)}</span><span class="status error">No sets found</span></div>`;
+      card.innerHTML = `<div class="result-header"><span class="result-query">${esc(query)}</span><span class="status error">No sets found — try a shorter name like "Inferno X" or "Surging Sparks"</span></div>`;
       return;
     }
 
     const matches = [];
-    const qWords = query.toLowerCase().split(' ').filter(w => w.length > 2);
+    const qWords = query.toLowerCase()
+      .replace(/[-–—:|,]/g, ' ')
+      .split(' ')
+      .filter(w => w.length > 2 && !['booster','box','pack','sealed','the','and','for'].includes(w));
 
     for (const set of sets) {
       try {
@@ -469,12 +512,15 @@ async function searchOne(query) {
 
         for (const p of products) {
           const nl = (p.name || '').toLowerCase();
+          const isSealed = /box|pack|tin|bundle|collection/i.test(p.name);
+          // For sealed products be lenient, for cards require word match
           const hits = qWords.filter(w => nl.includes(w)).length;
-          if (hits < Math.max(1, Math.floor(qWords.length * 0.5))) continue;
+          const threshold = isSealed ? 0 : Math.max(1, Math.floor(qWords.length * 0.5));
+          if (hits < threshold && !isSealed) continue;
           const tcg = prices[p.id]?.tcg || {};
           for (const [sub, obj] of Object.entries(tcg)) {
             if (!obj.market) continue;
-            matches.push({ p, set, sub, market: obj.market, low: obj.low, hits });
+            matches.push({ p, set, sub, market: obj.market, low: obj.low, hits: hits + (isSealed ? 10 : 0) });
           }
         }
       } catch(e) {}
