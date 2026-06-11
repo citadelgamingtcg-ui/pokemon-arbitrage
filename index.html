@@ -335,15 +335,7 @@ async function loadSets() {
         return b.abbreviation.localeCompare(a.abbreviation,undefined,{numeric:true});
       })
       .slice(0,30);
-
-    if(apiSets.length >= 5) {
-      // Merge: add any hardcoded M sets not already in API results
-      const apiIds = new Set(apiSets.map(s=>s.id));
-      const mSets = MAIN_JP_SETS.filter(s=>s.abbreviation.startsWith('m')&&!apiIds.has(s.id));
-      allSets = [...mSets, ...apiSets].sort((a,b)=>new Date(b.published_on)-new Date(a.published_on)).slice(0,30);
-    } else {
-      allSets = MAIN_JP_SETS;
-    }
+    allSets = apiSets.length >= 3 ? apiSets : MAIN_JP_SETS;
   } catch(e) {
     allSets = MAIN_JP_SETS;
   }
