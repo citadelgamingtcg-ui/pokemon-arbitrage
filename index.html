@@ -802,13 +802,36 @@ async function loadSets() {
     const res = await fetch(`${BASE}/${CAT}/sets`);
     if (!res.ok) return;
     const data = await res.json();
-    // Sort by published_on descending, filter out sets with no products
+
+    // Main sets have an abbreviation AND the name contains a series code
+    // Filter: must have abbreviation, product_count > 0, and name suggests a main set
+    const MAIN_SET_KEYWORDS = /^(sv|s|m|sm|xy|bw|dp|ex|neo|gym|base|rocket|aqua|magma|team|legend|call|rising|unleashed|undaunted|triumphant|emerging|noble|dark|boundaries|dragon|boundaries|plasma|dragon|xy|primal|ancient|breakthrough|breakpoint|fates|generations|evolutions|steam|burning|shining|forbidden|crimson|ultra|forbidden|lost|unified|cosmic|hidden|unbroken|rebel|sword|chilling|vivid|battle|shining|evolving|fusion|brilliant|astral|lost|silver|scarlet|violet|paldea|obsidian|paradox|temporal|twilight|shrouded|stellar|surging|prismatic|abyss|chaos|inferno|mega|ninja|munikis|perfect|ascended|phantasmal|pitch)/i;
+
     allSets = (data.sets || [])
-      .filter(s => s.product_count > 0 && s.published_on)
+      .filter(s =>
+        s.abbreviation !== null &&          // Must have an abbreviation = main set
+        s.product_count > 0 &&              // Must have products
+        s.published_on &&                   // Must have a release date
+        !s.name.toLowerCase().includes('promo') &&
+        !s.name.toLowerCase().includes('promotional') &&
+        !s.name.toLowerCase().includes('contest') &&
+        !s.name.toLowerCase().includes('vending') &&
+        !s.name.toLowerCase().includes('championship') &&
+        !s.name.toLowerCase().includes('fan club') &&
+        !s.name.toLowerCase().includes('unnumbered') &&
+        !s.name.toLowerCase().includes('corocoro') &&
+        !s.name.toLowerCase().includes('gym challenge') &&
+        !s.name.toLowerCase().includes('battle road') &&
+        !s.name.toLowerCase().includes('world hobby')
+      )
       .sort((a, b) => new Date(b.published_on) - new Date(a.published_on))
-      .slice(0, 20);
+      .slice(0, 30);
 
     const select = document.getElementById('setSelect');
+    if (!allSets.length) {
+      select.innerHTML = '<option value="">No main sets found</option>';
+      return;
+    }
     select.innerHTML = '<option value="">— Select a set —</option>';
     allSets.forEach(s => {
       const opt = document.createElement('option');
