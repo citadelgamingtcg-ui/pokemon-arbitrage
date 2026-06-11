@@ -404,14 +404,14 @@
   <div id="tab-flips" class="tab-content">
 
     <!-- Summary metrics -->
-    <div class="grid-3" style="margin-bottom:1rem;" id="flipMetrics">
+    <div class="grid-3" style="margin-bottom:1rem;">
       <div class="metric">
         <div class="metric-val" id="fm-total">$0.00</div>
         <div class="metric-lbl">Total profit</div>
       </div>
       <div class="metric">
         <div class="metric-val" id="fm-flips">0</div>
-        <div class="metric-lbl">Flips logged</div>
+        <div class="metric-lbl">Lots · Boxes</div>
       </div>
       <div class="metric">
         <div class="metric-val" id="fm-roi">0%</div>
@@ -419,52 +419,58 @@
       </div>
     </div>
 
-    <!-- Log a flip -->
+    <!-- Log a purchase -->
     <div class="card" style="margin-bottom:1rem;">
-      <div class="label">Log a flip</div>
+      <div class="label">Log a purchase</div>
       <div class="grid-2" style="margin-bottom:10px;">
         <div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Product name</div>
-          <input type="text" id="fl-name" placeholder="e.g. Inferno X Booster Box">
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Product (from watchlist)</div>
+          <select id="fl-name" style="width:100%;">
+            <option value="">— Select —</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Or type product name</div>
+          <input type="text" id="fl-name-custom" placeholder="e.g. Inferno X Booster Box">
+        </div>
+      </div>
+      <div class="grid-3" style="margin-bottom:10px;">
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Qty purchased</div>
+          <input type="number" id="fl-qty" value="1" min="1" step="1" oninput="previewPurchase()">
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Total paid ($)</div>
+          <input type="number" id="fl-buy-total" placeholder="0.00" step="0.01" oninput="previewPurchase()">
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Total shipping to me ($)</div>
+          <input type="number" id="fl-shipin" value="0" step="0.01" oninput="previewPurchase()">
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">TCGplayer fee (%)</div>
+          <input type="number" id="fl-fee" value="17.5" step="0.1">
         </div>
         <div>
           <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Date purchased</div>
           <input type="date" id="fl-date">
         </div>
-      </div>
-      <div class="grid-3" style="margin-bottom:10px;">
         <div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">eBay buy price ($)</div>
-          <input type="number" id="fl-buy" placeholder="0.00" step="0.01" oninput="previewFlip()">
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Ship to me ($)</div>
-          <input type="number" id="fl-shipin" value="0" step="0.01" oninput="previewFlip()">
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">TCGplayer sold price ($)</div>
-          <input type="number" id="fl-sold" placeholder="0.00" step="0.01" oninput="previewFlip()">
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Ship to buyer ($)</div>
-          <input type="number" id="fl-shipout" value="5" step="0.01" oninput="previewFlip()">
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">TCGplayer fee (%)</div>
-          <input type="number" id="fl-fee" value="17.5" step="0.1" oninput="previewFlip()">
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Status</div>
-          <select id="fl-status">
-            <option value="sold">Sold ✅</option>
-            <option value="listed">Listed 📋</option>
-            <option value="pending">Pending ⏳</option>
-          </select>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">eBay listing URL (optional)</div>
+          <input type="text" id="fl-ebay-url" placeholder="https://ebay.com/...">
         </div>
       </div>
-      <div id="fl-preview" style="margin-bottom:10px;"></div>
+      <!-- Per box preview -->
+      <div id="fl-perbox" style="display:none;background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:10px;">
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Per box cost</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:13px;">
+          <div class="pb-item">Buy/box <span id="fl-pb-cost" style="color:var(--text);font-weight:500;">—</span></div>
+          <div class="pb-item">Ship/box <span id="fl-pb-ship" style="color:var(--text);font-weight:500;">—</span></div>
+          <div class="pb-item">Total cost/box <span id="fl-pb-total" style="color:var(--text);font-weight:600;">—</span></div>
+        </div>
+      </div>
       <div class="row center">
-        <button class="primary" onclick="logFlip()">Log flip →</button>
+        <button class="primary" onclick="logPurchase()">Log purchase →</button>
         <span id="fl-status-msg" class="status" style="margin-left:10px;"></span>
       </div>
     </div>
@@ -472,10 +478,10 @@
     <!-- Flip log -->
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div class="label" style="margin:0;">Flip log</div>
+        <div class="label" style="margin:0;">Purchase log</div>
         <button onclick="exportFlips()" style="font-size:12px;padding:5px 12px;">Export CSV</button>
       </div>
-      <div id="flipLog"><div class="empty">No flips logged yet.</div></div>
+      <div id="flipLog"><div class="empty">No purchases logged yet.</div></div>
     </div>
 
   </div>
@@ -544,7 +550,7 @@ function switchTab(name) {
   });
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
-  if (name === 'flips') renderFlipLog();
+  if (name === 'flips') { renderFlipLog(); populateFlipDropdown(); }
 }
 
 // ─── Search ───────────────────────────────────────────────────────────────────
@@ -1005,95 +1011,152 @@ function esc(s) {
 }
 
 // ─── Flip History ─────────────────────────────────────────────────────────────
-function previewFlip() {
-  const buy = parseFloat(document.getElementById('fl-buy').value) || 0;
-  const sold = parseFloat(document.getElementById('fl-sold').value) || 0;
-  const shipIn = parseFloat(document.getElementById('fl-shipin').value) || 0;
-  const shipOut = parseFloat(document.getElementById('fl-shipout').value) || 0;
-  const feeRate = parseFloat(document.getElementById('fl-fee').value) || 17.5;
-  const el = document.getElementById('fl-preview');
-  if (!buy && !sold) { el.innerHTML = ''; return; }
-  const fee = sold * (feeRate / 100);
-  const totalCost = buy + shipIn;
-  const revenue = sold - fee - shipOut;
-  const profit = revenue - buy - shipIn;
-  const roi = totalCost > 0 ? (profit / totalCost * 100) : 0;
-  const cls = profit > 0 ? 'pos' : profit < 0 ? 'neg' : 'neutral';
-  const sign = profit >= 0 ? '+' : '';
-  el.innerHTML = `
-    <div class="profit-bar ${cls}">
-      <div class="profit-main ${cls}">${sign}$${Math.abs(profit).toFixed(2)} profit</div>
-      <div class="profit-breakdown" style="margin-top:4px;">
-        <div class="pb-item">Sold for <span>$${sold.toFixed(2)}</span></div>
-        <div class="pb-item">Fee (${feeRate}%) <span>-$${fee.toFixed(2)}</span></div>
-        <div class="pb-item">Ship out <span>-$${shipOut.toFixed(2)}</span></div>
-        <div class="pb-item">Buy cost <span>-$${buy.toFixed(2)}</span></div>
-        <div class="pb-item">Ship in <span>-$${shipIn.toFixed(2)}</span></div>
-        <div class="pb-item">ROI <span style="color:${roi>0?'var(--green)':roi<0?'var(--red)':'var(--text3)'};">${roi.toFixed(1)}%</span></div>
-      </div>
-    </div>`;
+function populateFlipDropdown() {
+  const sel = document.getElementById('fl-name');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Select from watchlist —</option>';
+  watchlist.forEach(w => {
+    const opt = document.createElement('option');
+    opt.value = w.name;
+    opt.textContent = w.name;
+    sel.appendChild(opt);
+  });
+  if (prev) sel.value = prev;
 }
 
-function logFlip() {
-  const name = document.getElementById('fl-name').value.trim();
+function getFlipName() {
+  const custom = document.getElementById('fl-name-custom').value.trim();
+  const sel = document.getElementById('fl-name').value;
+  return custom || sel || '';
+}
+
+function previewPurchase() {
+  const qty = Math.max(1, parseInt(document.getElementById('fl-qty').value) || 1);
+  const buyTotal = parseFloat(document.getElementById('fl-buy-total').value) || 0;
+  const shipInTotal = parseFloat(document.getElementById('fl-shipin').value) || 0;
+  const perboxEl = document.getElementById('fl-perbox');
+  if (buyTotal > 0) {
+    perboxEl.style.display = 'block';
+    document.getElementById('fl-pb-cost').textContent = `$${(buyTotal/qty).toFixed(2)}`;
+    document.getElementById('fl-pb-ship').textContent = `$${(shipInTotal/qty).toFixed(2)}`;
+    document.getElementById('fl-pb-total').textContent = `$${((buyTotal+shipInTotal)/qty).toFixed(2)}`;
+  } else {
+    perboxEl.style.display = 'none';
+  }
+}
+
+function logPurchase() {
+  const name = getFlipName();
   const date = document.getElementById('fl-date').value;
-  const buy = parseFloat(document.getElementById('fl-buy').value) || 0;
-  const sold = parseFloat(document.getElementById('fl-sold').value) || 0;
-  const shipIn = parseFloat(document.getElementById('fl-shipin').value) || 0;
-  const shipOut = parseFloat(document.getElementById('fl-shipout').value) || 0;
+  const qty = Math.max(1, parseInt(document.getElementById('fl-qty').value) || 1);
+  const buyTotal = parseFloat(document.getElementById('fl-buy-total').value) || 0;
+  const shipInTotal = parseFloat(document.getElementById('fl-shipin').value) || 0;
   const feeRate = parseFloat(document.getElementById('fl-fee').value) || 17.5;
-  const status = document.getElementById('fl-status').value;
+  const ebayUrl = document.getElementById('fl-ebay-url').value.trim();
   const msgEl = document.getElementById('fl-status-msg');
 
-  if (!name) { msgEl.textContent = 'Enter a product name.'; msgEl.className = 'status error'; return; }
-  if (!buy) { msgEl.textContent = 'Enter the eBay buy price.'; msgEl.className = 'status error'; return; }
+  if (!name) { msgEl.textContent = 'Select or enter a product name.'; msgEl.className = 'status error'; return; }
+  if (!buyTotal) { msgEl.textContent = 'Enter the total amount paid.'; msgEl.className = 'status error'; return; }
 
-  const fee = sold * (feeRate / 100);
-  const profit = sold > 0 ? (sold - fee - shipOut - buy - shipIn) : null;
-  const roi = profit !== null && (buy + shipIn) > 0 ? (profit / (buy + shipIn) * 100) : null;
+  const costPerBox = buyTotal / qty;
+  const shipPerBox = shipInTotal / qty;
+  const totalPerBox = costPerBox + shipPerBox;
 
-  flips.unshift({ id: Date.now(), name, date, buy, sold, shipIn, shipOut, feeRate, fee, profit, roi, status });
+  flips.unshift({
+    id: Date.now(),
+    name, date, qty,
+    buyTotal, shipInTotal,
+    costPerBox, shipPerBox, totalPerBox,
+    feeRate, ebayUrl,
+    sales: [] // individual sales logged against this lot
+  });
   localStorage.setItem('arb-flips', JSON.stringify(flips));
 
   // Reset form
   document.getElementById('fl-name').value = '';
-  document.getElementById('fl-buy').value = '';
-  document.getElementById('fl-sold').value = '';
-  document.getElementById('fl-preview').innerHTML = '';
+  document.getElementById('fl-name-custom').value = '';
+  document.getElementById('fl-qty').value = '1';
+  document.getElementById('fl-buy-total').value = '';
+  document.getElementById('fl-shipin').value = '0';
+  document.getElementById('fl-ebay-url').value = '';
+  document.getElementById('fl-perbox').style.display = 'none';
   document.getElementById('fl-date').value = new Date().toISOString().slice(0,10);
-  msgEl.textContent = '✓ Flip logged!';
+  msgEl.textContent = `✓ ${qty} box${qty>1?'es':''} logged!`;
+  msgEl.className = 'status';
+  setTimeout(() => { msgEl.textContent = ''; }, 2500);
+
+  renderFlipLog();
+}
+
+function addSale(flipId) {
+  const qty = parseInt(document.getElementById(`sale_${flipId}_qty`).value) || 1;
+  const price = parseFloat(document.getElementById(`sale_${flipId}_price`).value) || 0;
+  const shipOut = parseFloat(document.getElementById(`sale_${flipId}_ship`).value) || 0;
+  const date = document.getElementById(`sale_${flipId}_date`).value;
+  const msgEl = document.getElementById(`sale_${flipId}_msg`);
+
+  if (!price) { msgEl.textContent = 'Enter a sale price.'; msgEl.className = 'status error'; return; }
+
+  const flip = flips.find(f => f.id === flipId);
+  if (!flip) return;
+
+  const soldSoFar = (flip.sales || []).reduce((s, x) => s + x.qty, 0);
+  if (soldSoFar + qty > flip.qty) {
+    msgEl.textContent = `Only ${flip.qty - soldSoFar} box${flip.qty-soldSoFar!==1?'es':''} remaining.`;
+    msgEl.className = 'status error';
+    return;
+  }
+
+  const fee = price * (flip.feeRate / 100);
+  const profitPerBox = price - fee - shipOut - flip.totalPerBox;
+  const totalProfit = profitPerBox * qty;
+  const roi = flip.totalPerBox > 0 ? (profitPerBox / flip.totalPerBox * 100) : 0;
+
+  if (!flip.sales) flip.sales = [];
+  flip.sales.push({ id: Date.now(), qty, price, shipOut, date, fee, profitPerBox, totalProfit, roi });
+  localStorage.setItem('arb-flips', JSON.stringify(flips));
+
+  // Clear sale inputs
+  document.getElementById(`sale_${flipId}_qty`).value = '1';
+  document.getElementById(`sale_${flipId}_price`).value = '';
+  document.getElementById(`sale_${flipId}_ship`).value = '5';
+  msgEl.textContent = `✓ Sale logged!`;
   msgEl.className = 'status';
   setTimeout(() => { msgEl.textContent = ''; }, 2000);
 
   renderFlipLog();
-  updateFlipMetrics();
+}
+
+function deleteSale(flipId, saleId) {
+  const flip = flips.find(f => f.id === flipId);
+  if (!flip) return;
+  flip.sales = (flip.sales || []).filter(s => s.id !== saleId);
+  localStorage.setItem('arb-flips', JSON.stringify(flips));
+  renderFlipLog();
 }
 
 function deleteFlip(id) {
   flips = flips.filter(f => f.id !== id);
   localStorage.setItem('arb-flips', JSON.stringify(flips));
   renderFlipLog();
-  updateFlipMetrics();
-}
-
-function updateFlipStatus(id, status) {
-  const flip = flips.find(f => f.id === id);
-  if (flip) {
-    flip.status = status;
-    localStorage.setItem('arb-flips', JSON.stringify(flips));
-  }
 }
 
 function updateFlipMetrics() {
-  const soldFlips = flips.filter(f => f.profit !== null);
-  const totalProfit = soldFlips.reduce((sum, f) => sum + f.profit, 0);
-  const avgRoi = soldFlips.length > 0
-    ? soldFlips.reduce((sum, f) => sum + (f.roi || 0), 0) / soldFlips.length
-    : 0;
+  let totalProfit = 0, totalRoi = 0, roiCount = 0, totalBoxes = 0;
+  flips.forEach(f => {
+    totalBoxes += f.qty || 1;
+    (f.sales || []).forEach(s => {
+      totalProfit += s.totalProfit || 0;
+      totalRoi += s.roi || 0;
+      roiCount++;
+    });
+  });
+  const avgRoi = roiCount > 0 ? totalRoi / roiCount : 0;
   const profitEl = document.getElementById('fm-total');
   profitEl.textContent = (totalProfit >= 0 ? '+' : '') + '$' + Math.abs(totalProfit).toFixed(2);
   profitEl.style.color = totalProfit > 0 ? 'var(--green)' : totalProfit < 0 ? 'var(--red)' : 'var(--text3)';
-  document.getElementById('fm-flips').textContent = flips.length;
+  document.getElementById('fm-flips').textContent = `${flips.length} lots · ${totalBoxes} boxes`;
   const roiEl = document.getElementById('fm-roi');
   roiEl.textContent = avgRoi.toFixed(1) + '%';
   roiEl.style.color = avgRoi > 0 ? 'var(--green)' : avgRoi < 0 ? 'var(--red)' : 'var(--text3)';
@@ -1102,80 +1165,119 @@ function updateFlipMetrics() {
 function renderFlipLog() {
   updateFlipMetrics();
   const el = document.getElementById('flipLog');
-  if (!flips.length) { el.innerHTML = '<div class="empty">No flips logged yet.</div>'; return; }
-
-  const statusIcon = { sold: '✅', listed: '📋', pending: '⏳' };
-  const statusColor = { sold: 'var(--green)', listed: 'var(--yellow)', pending: 'var(--text3)' };
+  if (!flips.length) { el.innerHTML = '<div class="empty">No purchases logged yet.</div>'; return; }
 
   let html = '';
   flips.forEach(f => {
-    const profit = f.profit;
-    const roi = f.roi;
-    const cls = profit !== null ? (profit > 0 ? 'pos' : profit < 0 ? 'neg' : 'neutral') : 'neutral';
-    const sign = profit !== null && profit >= 0 ? '+' : '';
-    html += `
-    <div style="border-bottom:0.5px solid var(--border);padding:14px 0;">
-      <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:start;">
+    const sales = f.sales || [];
+    const soldQty = sales.reduce((s, x) => s + x.qty, 0);
+    const remaining = f.qty - soldQty;
+    const totalSaleProfit = sales.reduce((s, x) => s + x.totalProfit, 0);
+    const totalInvested = f.buyTotal + f.shipInTotal;
+    const pct = f.qty > 0 ? Math.round(soldQty / f.qty * 100) : 0;
+    const overallCls = totalSaleProfit > 0 ? 'pos' : totalSaleProfit < 0 ? 'neg' : 'neutral';
+    const sign = totalSaleProfit >= 0 ? '+' : '';
+    const statusLabel = remaining === 0 ? '✅ Fully sold' : soldQty > 0 ? `📋 ${remaining} remaining` : '⏳ None sold yet';
+
+    html += `<div style="border-bottom:0.5px solid var(--border);padding:16px 0;">
+
+      <!-- Lot header -->
+      <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:start;margin-bottom:12px;">
         <div>
-          <div style="font-size:14px;font-weight:500;color:var(--text);">${esc(f.name)}</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${f.date || '—'}</div>
-          <div style="margin-top:6px;">
-            <select onchange="updateFlipStatus(${f.id}, this.value)"
-              style="font-size:12px;padding:3px 8px;background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--radius-sm);color:${statusColor[f.status]||'var(--text3)'};">
-              <option value="sold" ${f.status==='sold'?'selected':''}>✅ Sold</option>
-              <option value="listed" ${f.status==='listed'?'selected':''}>📋 Listed</option>
-              <option value="pending" ${f.status==='pending'?'selected':''}>⏳ Pending</option>
-            </select>
+          <div style="font-size:15px;font-weight:500;color:var(--text);">${esc(f.name)}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">
+            Purchased ${f.date || '—'} · ×${f.qty} boxes · $${f.totalPerBox.toFixed(2)}/box cost
           </div>
+          <div style="font-size:12px;margin-top:4px;color:var(--text2);">${statusLabel}</div>
+          ${f.ebayUrl ? `<a href="${esc(f.ebayUrl)}" target="_blank" class="link-btn ebay-btn" style="margin-top:6px;display:inline-block;">eBay listing ↗</a>` : ''}
         </div>
         <div style="text-align:right;">
-          <div style="font-size:12px;color:var(--text3);">Bought</div>
-          <div style="font-size:15px;font-weight:600;">$${parseFloat(f.buy).toFixed(2)}</div>
-          ${f.sold ? `<div style="font-size:12px;color:var(--text3);">Sold $${parseFloat(f.sold).toFixed(2)}</div>` : '<div style="font-size:12px;color:var(--text3);">Not sold yet</div>'}
+          <div style="font-size:11px;color:var(--text3);">Invested</div>
+          <div style="font-size:14px;font-weight:600;">$${totalInvested.toFixed(2)}</div>
+          <div style="font-size:11px;color:var(--text3);">$${f.totalPerBox.toFixed(2)}/box</div>
         </div>
-        ${profit !== null ? `
         <div style="text-align:right;">
-          <div style="font-size:12px;color:var(--text3);">Profit</div>
-          <div style="font-size:15px;font-weight:600;color:${profit>0?'var(--green)':profit<0?'var(--red)':'var(--text3)'};">${sign}$${Math.abs(profit).toFixed(2)}</div>
-          ${roi !== null ? `<div style="font-size:12px;color:${roi>0?'var(--green)':roi<0?'var(--red)':'var(--text3)'};">${roi.toFixed(1)}% ROI</div>` : ''}
-        </div>` : '<div></div>'}
-        <div>
-          <button class="del-btn" onclick="deleteFlip(${f.id})">Delete</button>
+          <div style="font-size:11px;color:var(--text3);">Profit so far</div>
+          <div style="font-size:14px;font-weight:600;color:${totalSaleProfit>0?'var(--green)':totalSaleProfit<0?'var(--red)':'var(--text3)'};">${sign}$${Math.abs(totalSaleProfit).toFixed(2)}</div>
+          <div style="font-size:11px;color:var(--text3);">${soldQty}/${f.qty} sold</div>
         </div>
+        <div><button class="del-btn" onclick="deleteFlip(${f.id})">Delete</button></div>
       </div>
-      ${profit !== null ? `
-      <div class="profit-bar ${cls}" style="margin-top:10px;">
-        <div class="profit-breakdown">
-          <div class="pb-item">Sold <span>$${parseFloat(f.sold).toFixed(2)}</span></div>
-          <div class="pb-item">Fee (${f.feeRate}%) <span>-$${parseFloat(f.fee).toFixed(2)}</span></div>
-          <div class="pb-item">Ship out <span>-$${parseFloat(f.shipOut).toFixed(2)}</span></div>
-          <div class="pb-item">Buy cost <span>-$${parseFloat(f.buy).toFixed(2)}</span></div>
-          <div class="pb-item">Ship in <span>-$${parseFloat(f.shipIn).toFixed(2)}</span></div>
-        </div>
+
+      <!-- Progress bar -->
+      <div style="background:var(--bg4);border-radius:4px;height:6px;margin-bottom:12px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${remaining===0?'var(--green)':'var(--accent)'};border-radius:4px;transition:width 0.3s;"></div>
+      </div>
+
+      <!-- Sales list -->
+      ${sales.length ? `
+      <div style="margin-bottom:12px;">
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Sales</div>
+        ${sales.map(s => {
+          const sCls = s.profitPerBox > 0 ? 'pos' : s.profitPerBox < 0 ? 'neg' : 'neutral';
+          const sSign = s.profitPerBox >= 0 ? '+' : '';
+          return `<div style="display:grid;grid-template-columns:1fr auto auto auto auto auto;gap:10px;align-items:center;padding:8px 10px;background:var(--bg3);border-radius:var(--radius-sm);margin-bottom:4px;font-size:13px;">
+            <div style="color:var(--text2);">${s.date || '—'}</div>
+            <div>×${s.qty} box${s.qty>1?'es':''}</div>
+            <div>$${s.price.toFixed(2)}/box</div>
+            <div style="color:var(--text3);">-$${s.shipOut.toFixed(2)} ship</div>
+            <div style="font-weight:600;color:${s.profitPerBox>0?'var(--green)':s.profitPerBox<0?'var(--red)':'var(--text3)'};">${sSign}$${Math.abs(s.totalProfit).toFixed(2)}</div>
+            <button class="del-btn" onclick="deleteSale(${f.id},${s.id})" style="padding:2px 8px;font-size:11px;">✕</button>
+          </div>`;
+        }).join('')}
       </div>` : ''}
+
+      <!-- Add sale form -->
+      ${remaining > 0 ? `
+      <div style="background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:12px;">
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Log a sale (${remaining} box${remaining!==1?'es':''} available)</div>
+        <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr auto;gap:8px;align-items:flex-end;">
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Qty</div>
+            <input type="number" id="sale_${f.id}_qty" value="1" min="1" max="${remaining}" step="1" style="font-size:13px;padding:6px 8px;">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Sale price/box ($)</div>
+            <input type="number" id="sale_${f.id}_price" placeholder="0.00" step="0.01" style="font-size:13px;padding:6px 8px;">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Ship to buyer ($)</div>
+            <input type="number" id="sale_${f.id}_ship" value="5" step="0.01" style="font-size:13px;padding:6px 8px;">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Date sold</div>
+            <input type="date" id="sale_${f.id}_date" value="${new Date().toISOString().slice(0,10)}" style="font-size:13px;padding:6px 8px;">
+          </div>
+          <button onclick="addSale(${f.id})" style="padding:6px 14px;font-size:13px;white-space:nowrap;">Add sale →</button>
+        </div>
+        <div style="margin-top:6px;"><span id="sale_${f.id}_msg" class="status"></span></div>
+      </div>` : `<div style="font-size:13px;color:var(--green);padding:8px 0;">✅ All ${f.qty} boxes sold</div>`}
+
     </div>`;
   });
+
   el.innerHTML = html;
 }
 
 function exportFlips() {
   if (!flips.length) return;
-  const headers = ['Product','Date','Buy Price','Ship In','Sold Price','Ship Out','Fee %','Fee $','Profit','ROI %','Status'];
-  const rows = flips.map(f => [
-    `"${f.name}"`, f.date, f.buy, f.shipIn, f.sold || '',
-    f.shipOut, f.feeRate, f.fee ? f.fee.toFixed(2) : '',
-    f.profit !== null ? f.profit.toFixed(2) : '',
-    f.roi !== null ? f.roi.toFixed(1) : '',
-    f.status
-  ]);
-  const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const rows = [['Product','Purchase Date','Qty','Total Paid','Ship In','Cost/Box','Sale Date','Sale Qty','Sale Price/Box','Ship Out','Fee %','Fee $','Profit/Box','Total Sale Profit','ROI %']];
+  flips.forEach(f => {
+    if (!f.sales || !f.sales.length) {
+      rows.push([`"${f.name}"`, f.date, f.qty, f.buyTotal, f.shipInTotal, f.totalPerBox.toFixed(2), '', '', '', '', f.feeRate, '', '', '', '']);
+    } else {
+      f.sales.forEach(s => {
+        rows.push([`"${f.name}"`, f.date, f.qty, f.buyTotal, f.shipInTotal, f.totalPerBox.toFixed(2), s.date, s.qty, s.price, s.shipOut, f.feeRate, s.fee.toFixed(2), s.profitPerBox.toFixed(2), s.totalProfit.toFixed(2), s.roi.toFixed(1)]);
+      });
+    }
+  });
+  const csv = rows.map(r => r.join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `pokemon-flips-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
 }
-
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 init();
 loadSets();
