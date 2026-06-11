@@ -239,6 +239,20 @@
   .fee-row label { font-size: 13px; color: var(--text2); white-space: nowrap; }
   .fee-row input { width: 80px; }
 
+  /* Link buttons */
+  .link-btn {
+    display: inline-block;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: opacity 0.15s;
+  }
+  .link-btn:hover { opacity: 0.8; }
+  .tcg-btn { background: #1a2a4a; color: #7db8f7; border: 0.5px solid #2a3a6a; }
+  .ebay-btn { background: #2a1a0a; color: #f7a73d; border: 0.5px solid #4a3010; }
+
   /* Divider */
   hr { border: none; border-top: 0.5px solid var(--border); margin: 1rem 0; }
 
@@ -548,6 +562,7 @@ async function searchOne(query) {
       const multiSub = matches.filter(x => x.p.id === m.p.id).length > 1;
       const uid = `p_${m.p.id}_${idx}_${Date.now()}`;
       const tcgUrl = m.p.tcgplayer_url || `https://www.tcgplayer.com/product/${m.p.id}`;
+      const ebayUrl = buildEbayUrl(m.p.name);
       html += `
         <div class="product-row">
           <div>
@@ -557,6 +572,10 @@ async function searchOne(query) {
               ${multiSub ? `<span class="badge badge-subtype">${esc(m.sub)}</span>` : ''}
             </a>
             <div class="product-set">${esc(m.set.name)}</div>
+            <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+              <a href="${esc(tcgUrl)}" target="_blank" rel="noopener" class="link-btn tcg-btn">TCGplayer ↗</a>
+              <a href="${esc(ebayUrl)}" target="_blank" rel="noopener" class="link-btn ebay-btn">eBay US listings ↗</a>
+            </div>
           </div>
           <div class="price-col">
             <div class="market">$${parseFloat(m.market).toFixed(2)}</div>
@@ -564,7 +583,7 @@ async function searchOne(query) {
           </div>
           <div style="display:flex;gap:6px;flex-direction:column;align-items:flex-end;">
             <button onclick="toggleCalc('${uid}')" style="font-size:12px;padding:5px 12px;">Calc profit</button>
-            <button onclick="saveToWatchlist('${esc(m.p.name)}','${esc(m.set.name)}',${parseFloat(m.market)},${m.low ? parseFloat(m.low) : 0},'${esc(tcgUrl)}')" style="font-size:12px;padding:5px 12px;">Save</button>
+            <button onclick="saveToWatchlist('${esc(m.p.name)}','${esc(m.set.name)}',${parseFloat(m.market)},${m.low ? parseFloat(m.low) : 0},'${esc(tcgUrl)}','${esc(ebayUrl)}')" style="font-size:12px;padding:5px 12px;">Save</button>
           </div>
         </div>
         <div class="calc-panel" id="${uid}">
@@ -669,12 +688,12 @@ function calcProfit(uid, tcgPrice) {
 }
 
 // ─── Watchlist ────────────────────────────────────────────────────────────────
-function saveToWatchlist(name, set, market, low, url) {
+function saveToWatchlist(name, set, market, low, url, ebayUrl) {
   if (watchlist.find(w => w.name === name)) {
     alert(`"${name}" is already in your watchlist.`);
     return;
   }
-  watchlist.push({ name, set, market, low, url, saved: new Date().toLocaleDateString() });
+  watchlist.push({ name, set, market, low, url, ebayUrl: ebayUrl || '', saved: new Date().toLocaleDateString() });
   localStorage.setItem('arb-watchlist', JSON.stringify(watchlist));
   renderWatchlist();
   switchTab('watchlist');
@@ -694,7 +713,7 @@ function renderWatchlist() {
   }
   let html = `<table class="wl-table">
     <thead><tr>
-      <th>Product</th><th>Set</th><th>Market</th><th>Low</th><th>Saved</th><th></th>
+      <th>Product</th><th>Set</th><th>Market</th><th>Low</th><th>Links</th><th>Saved</th><th></th>
     </tr></thead><tbody>`;
   watchlist.forEach((w, i) => {
     html += `<tr>
@@ -702,12 +721,24 @@ function renderWatchlist() {
       <td style="color:var(--text3);">${esc(w.set)}</td>
       <td style="font-weight:600;">$${parseFloat(w.market).toFixed(2)}</td>
       <td style="color:var(--text3);">${w.low ? '$'+parseFloat(w.low).toFixed(2) : '—'}</td>
+      <td>
+        <a href="${esc(w.url)}" target="_blank" class="link-btn tcg-btn" style="margin-right:4px;">TCG ↗</a>
+        ${w.ebayUrl ? `<a href="${esc(w.ebayUrl)}" target="_blank" class="link-btn ebay-btn">eBay ↗</a>` : ''}
+      </td>
       <td style="color:var(--text3);">${esc(w.saved)}</td>
       <td><button class="del-btn" onclick="removeFromWatchlist(${i})">Remove</button></td>
     </tr>`;
   });
   html += '</tbody></table>';
   el.innerHTML = html;
+}
+
+// ─── eBay URL builder ─────────────────────────────────────────────────────────
+function buildEbayUrl(productName) {
+  // Build an eBay search URL: US only, Buy It Now, lowest price + shipping, sealed Pokemon
+  const query = encodeURIComponent(productName + ' Pokemon Japanese sealed');
+  // LH_BIN=1 = Buy It Now, LH_PrefLoc=1 = US only, _sop=15 = lowest price+shipping
+  return `https://www.ebay.com/sch/i.html?_nkw=${query}&LH_BIN=1&LH_PrefLoc=1&_sop=15&LH_ItemCondition=1000`;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
