@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokemon Arbitrage Tool</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0c0c0f;
+    --bg2: #13131a;
+    --bg3: #1a1a24;
+    --bg4: #22222f;
+    --border: #2a2a3a;
+    --border2: #38384a;
+    --text: #e8e8f0;
+    --text2: #9090a8;
+    --text3: #5a5a72;
+    --accent: #7c6ff7;
+    --accent2: #5a54c4;
+    --green: #4ade80;
+    --green-bg: #0d2a1a;
+    --red: #f87171;
+    --red-bg: #2a0d0d;
+    --yellow: #fbbf24;
+    --yellow-bg: #2a2000;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .container { max-width: 900px; margin: 0 auto; }
+
+  /* Header */
+  .header { margin-bottom: 2rem; }
+  .header h1 { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .header p { font-size: 13px; color: var(--text3); }
+
+  /* Cards */
+  .card {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Section labels */
+  .label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+
+  /* Inputs */
+  input, textarea, select {
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 90px; }
+  input[type=number] { -moz-appearance: textfield; }
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  /* Buttons */
+  button {
+    background: transparent;
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    padding: 9px 18px;
+    transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  button:hover { background: var(--bg4); border-color: var(--accent); }
+  button:active { transform: scale(0.98); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  button.primary { background: var(--accent2); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: var(--accent); }
+
+  /* Row layouts */
+  .row { display: flex; gap: 10px; align-items: flex-start; }
+  .row.center { align-items: center; }
+  .grow { flex: 1; }
+
+  /* Grid */
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  @media (max-width: 600px) {
+    .grid-3 { grid-template-columns: 1fr; }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+
+  /* Status */
+  .status { font-size: 13px; color: var(--text3); }
+  .status.error { color: var(--red); }
+  .status.loading::after {
+    content: '';
+    display: inline-block;
+    width: 8px; height: 8px;
+    border: 1.5px solid var(--text3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Result cards */
+  .result-card {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .result-header {
+    padding: 12px 16px;
+    border-bottom: 0.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .result-query { font-size: 13px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
+  .result-count { font-size: 12px; color: var(--text3); }
+
+  .product-row {
+    padding: 12px 16px;
+    border-bottom: 0.5px solid var(--border);
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 12px;
+    align-items: center;
+  }
+  .product-row:last-child { border-bottom: none; }
+  .product-name {
+    font-size: 14px;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .product-name:hover { color: var(--accent); }
+  .product-set { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 20px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .badge-sealed { background: #1a1f4a; color: #8090f8; }
+  .badge-subtype { background: var(--bg4); color: var(--text3); }
+
+  .price-col { text-align: right; }
+  .market { font-size: 15px; font-weight: 600; color: var(--text); }
+  .low { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+  /* Calc panel */
+  .calc-panel {
+    background: var(--bg3);
+    border-top: 0.5px solid var(--border);
+    padding: 14px 16px;
+    display: none;
+  }
+  .calc-panel.open { display: block; }
+  .calc-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  @media (max-width: 600px) { .calc-grid { grid-template-columns: repeat(2, 1fr); } }
+  .calc-grid .input-label { font-size: 11px; color: var(--text3); margin-bottom: 5px; }
+  .calc-grid input { font-size: 13px; padding: 7px 10px; }
+
+  .profit-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .profit-bar.pos { background: var(--green-bg); border: 0.5px solid #1a4a2a; }
+  .profit-bar.neg { background: var(--red-bg); border: 0.5px solid #4a1a1a; }
+  .profit-bar.neutral { background: var(--bg4); border: 0.5px solid var(--border); }
+
+  .profit-main { font-size: 18px; font-weight: 600; }
+  .profit-main.pos { color: var(--green); }
+  .profit-main.neg { color: var(--red); }
+  .profit-main.neutral { color: var(--text3); }
+
+  .profit-breakdown { display: flex; gap: 16px; flex-wrap: wrap; }
+  .pb-item { font-size: 12px; color: var(--text3); }
+  .pb-item span { color: var(--text2); }
+
+  /* Metric cards */
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+  @media (max-width: 500px) { .metrics { grid-template-columns: 1fr; } }
+  .metric {
+    background: var(--bg4);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .metric-val { font-size: 18px; font-weight: 600; margin-bottom: 2px; }
+  .metric-lbl { font-size: 11px; color: var(--text3); }
+
+  /* Fee config */
+  .fee-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .fee-row label { font-size: 13px; color: var(--text2); white-space: nowrap; }
+  .fee-row input { width: 80px; }
+
+  /* Divider */
+  hr { border: none; border-top: 0.5px solid var(--border); margin: 1rem 0; }
+
+  /* Empty state */
+  .empty { font-size: 14px; color: var(--text3); padding: 16px; text-align: center; }
+
+  /* Tab bar */
+  .tabs { display: flex; gap: 4px; margin-bottom: 1rem; }
+  .tab {
+    padding: 7px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    cursor: pointer;
+    border: 0.5px solid transparent;
+    color: var(--text3);
+    background: transparent;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text); background: var(--bg3); }
+  .tab.active { color: var(--text); background: var(--bg3); border-color: var(--border); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Watchlist table */
+  .wl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .wl-table th { text-align: left; padding: 8px 12px; color: var(--text3); font-weight: 500; border-bottom: 0.5px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .wl-table td { padding: 10px 12px; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
+  .wl-table tr:last-child td { border-bottom: none; }
+  .wl-table tr:hover td { background: var(--bg3); }
+  .del-btn { padding: 4px 10px; font-size: 12px; color: var(--red); border-color: #4a1a1a; }
+  .del-btn:hover { background: var(--red-bg); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>🃏 Pokemon Arbitrage</h1>
+    <p>Search TCGplayer prices for Japanese sealed products · calculate flip profit</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('search')">Search</button>
+    <button class="tab" onclick="switchTab('watchlist')">Watchlist</button>
+    <button class="tab" onclick="switchTab('settings')">Settings</button>
+  </div>
+
+  <!-- SEARCH TAB -->
+  <div id="tab-search" class="tab-content active">
+
+    <div class="card">
+      <div class="label">Product lookup</div>
+      <div class="row" style="margin-bottom:10px;">
+        <textarea id="queryInput" class="grow" placeholder="One product per line:&#10;Inferno X Booster Box&#10;Mega Dream ex Booster Box&#10;Pokemon Card 151 Booster Box"></textarea>
+      </div>
+      <div class="row center">
+        <button class="primary" id="searchBtn" onclick="searchAll()">Search TCGplayer →</button>
+        <button onclick="clearResults()" style="margin-left:6px;">Clear</button>
+        <span id="searchStatus" class="status" style="margin-left:10px;"></span>
+      </div>
+    </div>
+
+    <div id="results"></div>
+
+  </div>
+
+  <!-- WATCHLIST TAB -->
+  <div id="tab-watchlist" class="tab-content">
+    <div class="card">
+      <div class="label">Saved products</div>
+      <div id="watchlistBody">
+        <div class="empty">No products saved yet. Search for a product and click "Save".</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div id="tab-settings" class="tab-content">
+    <div class="card">
+      <div class="label">Fee configuration</div>
+      <div class="grid-2" style="margin-bottom:12px;">
+        <div>
+          <div class="input-label" style="font-size:12px;color:var(--text3);margin-bottom:5px;">TCGplayer fee (%)</div>
+          <input type="number" id="cfg-tcgfee" value="15" min="0" max="100" step="0.1" onchange="saveSettings()">
+        </div>
+        <div>
+          <div class="input-label" style="font-size:12px;color:var(--text3);margin-bottom:5px;">TCGplayer processing fee (%)</div>
+          <input type="number" id="cfg-procfee" value="2.5" min="0" max="10" step="0.1" onchange="saveSettings()">
+        </div>
+        <div>
+          <div class="input-label" style="font-size:12px;color:var(--text3);margin-bottom:5px;">Default ship to buyer ($)</div>
+          <input type="number" id="cfg-shipout" value="5" min="0" step="0.5" onchange="saveSettings()">
+        </div>
+        <div>
+          <div class="input-label" style="font-size:12px;color:var(--text3);margin-bottom:5px;">Default ship to me ($)</div>
+          <input type="number" id="cfg-shipin" value="0" min="0" step="0.5" onchange="saveSettings()">
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--text3);">Total effective fee: <span id="cfg-totalfee" style="color:var(--text2);">17.5%</span></div>
+    </div>
+
+    <div class="card">
+      <div class="label">eBay API (coming soon)</div>
+      <div style="margin-bottom:10px;">
+        <div class="input-label" style="font-size:12px;color:var(--text3);margin-bottom:5px;">eBay App ID (Client ID)</div>
+        <input type="text" id="cfg-ebaykey" placeholder="Paste your eBay Browse API key here" onchange="saveSettings()">
+      </div>
+      <div style="font-size:12px;color:var(--text3);">Once you have your eBay API key, paste it here and eBay listings will automatically populate in search results.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── Config ───────────────────────────────────────────────────────────────────
+const BASE = 'https://tcgtracking.com/tcgapi/v1';
+const CAT = 85; // Pokemon Japan
+
+let settings = {
+  tcgFee: 15,
+  procFee: 2.5,
+  shipOut: 5,
+  shipIn: 0,
+  ebayKey: ''
+};
+let watchlist = [];
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+function init() {
+  try {
+    const s = localStorage.getItem('arb-settings');
+    if (s) settings = { ...settings, ...JSON.parse(s) };
+    const w = localStorage.getItem('arb-watchlist');
+    if (w) watchlist = JSON.parse(w);
+  } catch(e) {}
+  document.getElementById('cfg-tcgfee').value = settings.tcgFee;
+  document.getElementById('cfg-procfee').value = settings.procFee;
+  document.getElementById('cfg-shipout').value = settings.shipOut;
+  document.getElementById('cfg-shipin').value = settings.shipIn;
+  document.getElementById('cfg-ebaykey').value = settings.ebayKey || '';
+  updateTotalFee();
+  renderWatchlist();
+}
+
+function saveSettings() {
+  settings.tcgFee = parseFloat(document.getElementById('cfg-tcgfee').value) || 15;
+  settings.procFee = parseFloat(document.getElementById('cfg-procfee').value) || 2.5;
+  settings.shipOut = parseFloat(document.getElementById('cfg-shipout').value) || 5;
+  settings.shipIn = parseFloat(document.getElementById('cfg-shipin').value) || 0;
+  settings.ebayKey = document.getElementById('cfg-ebaykey').value.trim();
+  localStorage.setItem('arb-settings', JSON.stringify(settings));
+  updateTotalFee();
+}
+
+function updateTotalFee() {
+  const total = (settings.tcgFee || 15) + (settings.procFee || 2.5);
+  document.getElementById('cfg-totalfee').textContent = total.toFixed(1) + '%';
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const tabs = ['search','watchlist','settings'];
+    t.classList.toggle('active', tabs[i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ─── Search ───────────────────────────────────────────────────────────────────
+function setStatus(msg, type) {
+  const el = document.getElementById('searchStatus');
+  el.textContent = msg;
+  el.className = 'status' + (type ? ' ' + type : '');
+}
+
+async function searchAll() {
+  const lines = document.getElementById('queryInput').value
+    .split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return;
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('searchBtn').disabled = true;
+  for (let i = 0; i < lines.length; i++) {
+    setStatus(`Searching ${i+1} of ${lines.length}...`, 'loading');
+    await searchOne(lines[i]);
+  }
+  setStatus(`Done — ${lines.length} product(s) searched.`);
+  document.getElementById('searchBtn').disabled = false;
+}
+
+async function searchOne(query) {
+  const container = document.getElementById('results');
+  const card = document.createElement('div');
+  card.className = 'result-card';
+  card.innerHTML = `
+    <div class="result-header">
+      <span class="result-query">${esc(query)}</span>
+      <span class="result-count status loading">Fetching prices...</span>
+    </div>`;
+  container.appendChild(card);
+
+  try {
+    const res = await fetch(`${BASE}/${CAT}/search?q=${encodeURIComponent(query)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const sets = (data.sets || []).slice(0, 4);
+
+    if (!sets.length) {
+      card.innerHTML = `<div class="result-header"><span class="result-query">${esc(query)}</span><span class="status error">No sets found</span></div>`;
+      return;
+    }
+
+    const matches = [];
+    const qWords = query.toLowerCase().split(' ').filter(w => w.length > 2);
+
+    for (const set of sets) {
+      try {
+        const [pRes, prRes] = await Promise.all([
+          fetch(`${BASE}/${CAT}/sets/${set.id}`),
+          fetch(`${BASE}/${CAT}/sets/${set.id}/pricing`)
+        ]);
+        const pData = await pRes.json();
+        const prData = await prRes.json();
+        const products = pData.products || [];
+        const prices = prData.prices || {};
+
+        for (const p of products) {
+          const nl = (p.name || '').toLowerCase();
+          const hits = qWords.filter(w => nl.includes(w)).length;
+          if (hits < Math.max(1, Math.floor(qWords.length * 0.5))) continue;
+          const tcg = prices[p.id]?.tcg || {};
+          for (const [sub, obj] of Object.entries(tcg)) {
+            if (!obj.market) continue;
+            matches.push({ p, set, sub, market: obj.market, low: obj.low, hits });
+          }
+        }
+      } catch(e) {}
+    }
+
+    // Sort: sealed first, then by match quality
+    matches.sort((a, b) => {
+      const aS = /box|pack|tin|bundle|collection/i.test(a.p.name) ? 0 : 1;
+      const bS = /box|pack|tin|bundle|collection/i.test(b.p.name) ? 0 : 1;
+      return aS - bS || b.hits - a.hits;
+    });
+
+    if (!matches.length) {
+      card.innerHTML = `<div class="result-header"><span class="result-query">${esc(query)}</span><span class="status error">No products with pricing found</span></div>`;
+      return;
+    }
+
+    let html = `<div class="result-header">
+      <span class="result-query">${esc(query)}</span>
+      <span class="result-count">${matches.length} result(s)</span>
+    </div>`;
+
+    matches.slice(0, 10).forEach((m, idx) => {
+      const isSealed = /box|pack|tin|bundle|collection/i.test(m.p.name);
+      const multiSub = matches.filter(x => x.p.id === m.p.id).length > 1;
+      const uid = `p_${m.p.id}_${idx}_${Date.now()}`;
+      const tcgUrl = m.p.tcgplayer_url || `https://www.tcgplayer.com/product/${m.p.id}`;
+      html += `
+        <div class="product-row">
+          <div>
+            <a class="product-name" href="${esc(tcgUrl)}" target="_blank" rel="noopener">
+              ${esc(m.p.name)}
+              ${isSealed ? '<span class="badge badge-sealed">sealed</span>' : ''}
+              ${multiSub ? `<span class="badge badge-subtype">${esc(m.sub)}</span>` : ''}
+            </a>
+            <div class="product-set">${esc(m.set.name)}</div>
+          </div>
+          <div class="price-col">
+            <div class="market">$${parseFloat(m.market).toFixed(2)}</div>
+            ${m.low ? `<div class="low">Low $${parseFloat(m.low).toFixed(2)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:6px;flex-direction:column;align-items:flex-end;">
+            <button onclick="toggleCalc('${uid}')" style="font-size:12px;padding:5px 12px;">Calc profit</button>
+            <button onclick="saveToWatchlist('${esc(m.p.name)}','${esc(m.set.name)}',${parseFloat(m.market)},${m.low ? parseFloat(m.low) : 0},'${esc(tcgUrl)}')" style="font-size:12px;padding:5px 12px;">Save</button>
+          </div>
+        </div>
+        <div class="calc-panel" id="${uid}">
+          ${buildCalcHTML(uid, parseFloat(m.market))}
+        </div>`;
+    });
+
+    card.innerHTML = html;
+
+  } catch(e) {
+    card.innerHTML = `<div class="result-header"><span class="result-query">${esc(query)}</span><span class="status error">Error: ${e.message}. Make sure you're on the Vercel URL, not a local file.</span></div>`;
+  }
+}
+
+function buildCalcHTML(uid, tcgPrice) {
+  return `
+    <div class="calc-grid">
+      <div>
+        <div class="input-label">eBay price ($)</div>
+        <input type="number" id="${uid}_ebay" placeholder="0.00" step="0.01"
+          oninput="calcProfit('${uid}', ${tcgPrice})">
+      </div>
+      <div>
+        <div class="input-label">Ship to me ($)</div>
+        <input type="number" id="${uid}_shipin" value="${settings.shipIn}" step="0.01"
+          oninput="calcProfit('${uid}', ${tcgPrice})">
+      </div>
+      <div>
+        <div class="input-label">Ship to buyer ($)</div>
+        <input type="number" id="${uid}_shipout" value="${settings.shipOut}" step="0.01"
+          oninput="calcProfit('${uid}', ${tcgPrice})">
+      </div>
+      <div>
+        <div class="input-label">TCGplayer fee (%)</div>
+        <input type="number" id="${uid}_fee" value="${settings.tcgFee + settings.procFee}" step="0.1"
+          oninput="calcProfit('${uid}', ${tcgPrice})">
+      </div>
+    </div>
+    <div id="${uid}_result">
+      <div class="profit-bar neutral">
+        <span class="profit-main neutral">Enter eBay price to calculate</span>
+      </div>
+    </div>`;
+}
+
+function toggleCalc(uid) {
+  const panel = document.getElementById(uid);
+  if (!panel) return;
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) {
+    const inp = document.getElementById(uid + '_ebay');
+    if (inp) inp.focus();
+  }
+}
+
+function calcProfit(uid, tcgPrice) {
+  const ebay = parseFloat(document.getElementById(uid + '_ebay')?.value) || 0;
+  const shipIn = parseFloat(document.getElementById(uid + '_shipin')?.value) || 0;
+  const shipOut = parseFloat(document.getElementById(uid + '_shipout')?.value) || 0;
+  const feeRate = (parseFloat(document.getElementById(uid + '_fee')?.value) || 17.5) / 100;
+  const resultEl = document.getElementById(uid + '_result');
+  if (!resultEl) return;
+  if (!ebay) {
+    resultEl.innerHTML = `<div class="profit-bar neutral"><span class="profit-main neutral">Enter eBay price to calculate</span></div>`;
+    return;
+  }
+  const fee = tcgPrice * feeRate;
+  const totalCost = ebay + shipIn;
+  const revenue = tcgPrice - fee - shipOut;
+  const profit = revenue - ebay - shipIn;
+  const margin = tcgPrice > 0 ? (profit / tcgPrice * 100) : 0;
+  const roi = totalCost > 0 ? (profit / totalCost * 100) : 0;
+  const cls = profit > 0 ? 'pos' : profit < 0 ? 'neg' : 'neutral';
+  const sign = profit >= 0 ? '+' : '';
+  resultEl.innerHTML = `
+    <div class="profit-bar ${cls}">
+      <div>
+        <div class="profit-main ${cls}">${sign}$${Math.abs(profit).toFixed(2)} profit</div>
+        <div class="profit-breakdown" style="margin-top:6px;">
+          <div class="pb-item">TCGplayer sale <span>$${tcgPrice.toFixed(2)}</span></div>
+          <div class="pb-item">Fee (${(feeRate*100).toFixed(1)}%) <span>-$${fee.toFixed(2)}</span></div>
+          <div class="pb-item">Ship out <span>-$${shipOut.toFixed(2)}</span></div>
+          <div class="pb-item">eBay cost <span>-$${ebay.toFixed(2)}</span></div>
+          <div class="pb-item">Ship in <span>-$${shipIn.toFixed(2)}</span></div>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-val" style="color:${profit>0?'var(--green)':profit<0?'var(--red)':'var(--text3)'};">${sign}$${Math.abs(profit).toFixed(2)}</div>
+          <div class="metric-lbl">Net profit</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val" style="color:${margin>0?'var(--green)':margin<0?'var(--red)':'var(--text3)'};">${margin.toFixed(1)}%</div>
+          <div class="metric-lbl">Margin</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val" style="color:${roi>0?'var(--green)':roi<0?'var(--red)':'var(--text3)'};">${roi.toFixed(1)}%</div>
+          <div class="metric-lbl">ROI</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ─── Watchlist ────────────────────────────────────────────────────────────────
+function saveToWatchlist(name, set, market, low, url) {
+  if (watchlist.find(w => w.name === name)) {
+    alert(`"${name}" is already in your watchlist.`);
+    return;
+  }
+  watchlist.push({ name, set, market, low, url, saved: new Date().toLocaleDateString() });
+  localStorage.setItem('arb-watchlist', JSON.stringify(watchlist));
+  renderWatchlist();
+  switchTab('watchlist');
+}
+
+function removeFromWatchlist(idx) {
+  watchlist.splice(idx, 1);
+  localStorage.setItem('arb-watchlist', JSON.stringify(watchlist));
+  renderWatchlist();
+}
+
+function renderWatchlist() {
+  const el = document.getElementById('watchlistBody');
+  if (!watchlist.length) {
+    el.innerHTML = '<div class="empty">No products saved yet. Search for a product and click "Save".</div>';
+    return;
+  }
+  let html = `<table class="wl-table">
+    <thead><tr>
+      <th>Product</th><th>Set</th><th>Market</th><th>Low</th><th>Saved</th><th></th>
+    </tr></thead><tbody>`;
+  watchlist.forEach((w, i) => {
+    html += `<tr>
+      <td><a href="${esc(w.url)}" target="_blank" style="color:var(--text);text-decoration:none;">${esc(w.name)}</a></td>
+      <td style="color:var(--text3);">${esc(w.set)}</td>
+      <td style="font-weight:600;">$${parseFloat(w.market).toFixed(2)}</td>
+      <td style="color:var(--text3);">${w.low ? '$'+parseFloat(w.low).toFixed(2) : '—'}</td>
+      <td style="color:var(--text3);">${esc(w.saved)}</td>
+      <td><button class="del-btn" onclick="removeFromWatchlist(${i})">Remove</button></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function clearResults() {
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('queryInput').value = '';
+  setStatus('');
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
