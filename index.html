@@ -1016,12 +1016,33 @@ function populateFlipDropdown() {
   if (!sel) return;
   const prev = sel.value;
   sel.innerHTML = '<option value="">— Select from watchlist —</option>';
-  watchlist.forEach(w => {
-    const opt = document.createElement('option');
-    opt.value = w.name;
-    opt.textContent = w.name;
-    sel.appendChild(opt);
-  });
+
+  // Add watchlist items
+  if (watchlist.length) {
+    const wlGroup = document.createElement('optgroup');
+    wlGroup.label = 'Watchlist';
+    watchlist.forEach(w => {
+      const opt = document.createElement('option');
+      opt.value = w.name;
+      opt.textContent = w.name;
+      wlGroup.appendChild(opt);
+    });
+    sel.appendChild(wlGroup);
+  }
+
+  // Add recent sets booster boxes from allSets names
+  if (allSets.length) {
+    const setGroup = document.createElement('optgroup');
+    setGroup.label = 'Recent Sets';
+    allSets.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.name + ' Booster Box';
+      opt.textContent = s.name + ' Booster Box';
+      setGroup.appendChild(opt);
+    });
+    sel.appendChild(setGroup);
+  }
+
   if (prev) sel.value = prev;
 }
 
@@ -1328,6 +1349,7 @@ async function loadSets() {
       select.appendChild(opt);
     });
     document.getElementById('browseBtn').disabled = false;
+    populateFlipDropdown(); // refresh flip dropdown with set names
   } catch(e) {
     document.getElementById('setSelect').innerHTML = '<option value="">Failed to load sets</option>';
   }
