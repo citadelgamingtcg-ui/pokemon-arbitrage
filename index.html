@@ -3,1218 +3,864 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pokemon Arbitrage Tool</title>
+<title>Pokemon Arbitrage</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg: #0c0c0f;
-    --bg2: #13131a;
-    --bg3: #1a1a24;
-    --bg4: #22222f;
-    --border: #2a2a3a;
-    --border2: #38384a;
-    --text: #e8e8f0;
-    --text2: #9090a8;
-    --text3: #5a5a72;
-    --accent: #7c6ff7;
-    --accent2: #5a54c4;
-    --green: #4ade80;
-    --green-bg: #0d2a1a;
-    --red: #f87171;
-    --red-bg: #2a0d0d;
-    --yellow: #fbbf24;
-    --yellow-bg: #2a2000;
-    --radius: 10px;
-    --radius-sm: 6px;
-  }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 2rem 1rem;
-  }
-
-  .container { max-width: 900px; margin: 0 auto; }
-
-  /* Header */
-  .header { margin-bottom: 2rem; }
-  .header h1 { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-  .header p { font-size: 13px; color: var(--text3); }
-
-  /* Cards */
-  .card {
-    background: var(--bg2);
-    border: 0.5px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.25rem;
-    margin-bottom: 1rem;
-  }
-
-  /* Section labels */
-  .label {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text3);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 10px;
-  }
-
-  /* Inputs */
-  input, textarea, select {
-    background: var(--bg3);
-    border: 0.5px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text);
-    font-family: inherit;
-    font-size: 14px;
-    padding: 9px 12px;
-    outline: none;
-    transition: border-color 0.15s;
-    width: 100%;
-  }
-  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
-  textarea { resize: vertical; min-height: 90px; }
-  input[type=number] { -moz-appearance: textfield; }
-  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
-
-  /* Buttons */
-  button {
-    background: transparent;
-    border: 0.5px solid var(--border2);
-    border-radius: var(--radius-sm);
-    color: var(--text);
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 13px;
-    padding: 9px 18px;
-    transition: background 0.15s, border-color 0.15s;
-    white-space: nowrap;
-  }
-  button:hover { background: var(--bg4); border-color: var(--accent); }
-  button:active { transform: scale(0.98); }
-  button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-  button.primary { background: var(--accent2); border-color: var(--accent); color: #fff; }
-  button.primary:hover { background: var(--accent); }
-
-  /* Row layouts */
-  .row { display: flex; gap: 10px; align-items: flex-start; }
-  .row.center { align-items: center; }
-  .grow { flex: 1; }
-
-  /* Grid */
-  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  @media (max-width: 600px) {
-    .grid-3 { grid-template-columns: 1fr; }
-    .grid-2 { grid-template-columns: 1fr; }
-  }
-
-  /* Status */
-  .status { font-size: 13px; color: var(--text3); }
-  .status.error { color: var(--red); }
-  .status.loading::after {
-    content: '';
-    display: inline-block;
-    width: 8px; height: 8px;
-    border: 1.5px solid var(--text3);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    margin-left: 8px;
-    vertical-align: middle;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Result cards */
-  .result-card {
-    background: var(--bg2);
-    border: 0.5px solid var(--border);
-    border-radius: var(--radius);
-    margin-bottom: 12px;
-    overflow: hidden;
-  }
-  .result-header {
-    padding: 12px 16px;
-    border-bottom: 0.5px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .result-query { font-size: 13px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
-  .result-count { font-size: 12px; color: var(--text3); }
-
-  .product-row {
-    padding: 12px 16px;
-    border-bottom: 0.5px solid var(--border);
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    gap: 12px;
-    align-items: center;
-  }
-  .product-row:last-child { border-bottom: none; }
-  .product-name {
-    font-size: 14px;
-    color: var(--text);
-    text-decoration: none;
-  }
-  .product-name:hover { color: var(--accent); }
-  .product-set { font-size: 12px; color: var(--text3); margin-top: 2px; }
-
-  .badge {
-    display: inline-block;
-    font-size: 10px;
-    padding: 2px 7px;
-    border-radius: 20px;
-    margin-left: 6px;
-    vertical-align: middle;
-  }
-  .badge-sealed { background: #1a1f4a; color: #8090f8; }
-  .badge-subtype { background: var(--bg4); color: var(--text3); }
-
-  .price-col { text-align: right; }
-  .market { font-size: 15px; font-weight: 600; color: var(--text); }
-  .low { font-size: 12px; color: var(--text3); margin-top: 2px; }
-
-  /* Calc panel */
-  .calc-panel {
-    background: var(--bg3);
-    border-top: 0.5px solid var(--border);
-    padding: 14px 16px;
-    display: none;
-  }
-  .calc-panel.open { display: block; }
-  .calc-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    margin-bottom: 12px;
-  }
-  @media (max-width: 600px) { .calc-grid { grid-template-columns: repeat(2, 1fr); } }
-  .calc-grid .input-label { font-size: 11px; color: var(--text3); margin-bottom: 5px; }
-  .calc-grid input { font-size: 13px; padding: 7px 10px; }
-
-  .profit-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 14px;
-    border-radius: var(--radius-sm);
-    font-size: 13px;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .profit-bar.pos { background: var(--green-bg); border: 0.5px solid #1a4a2a; }
-  .profit-bar.neg { background: var(--red-bg); border: 0.5px solid #4a1a1a; }
-  .profit-bar.neutral { background: var(--bg4); border: 0.5px solid var(--border); }
-
-  .profit-main { font-size: 18px; font-weight: 600; }
-  .profit-main.pos { color: var(--green); }
-  .profit-main.neg { color: var(--red); }
-  .profit-main.neutral { color: var(--text3); }
-
-  .profit-breakdown { display: flex; gap: 16px; flex-wrap: wrap; }
-  .pb-item { font-size: 12px; color: var(--text3); }
-  .pb-item span { color: var(--text2); }
-
-  /* Metric cards */
-  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
-  @media (max-width: 500px) { .metrics { grid-template-columns: 1fr; } }
-  .metric {
-    background: var(--bg4);
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
-    text-align: center;
-  }
-  .metric-val { font-size: 18px; font-weight: 600; margin-bottom: 2px; }
-  .metric-lbl { font-size: 11px; color: var(--text3); }
-
-  /* Fee config */
-  .fee-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  .fee-row label { font-size: 13px; color: var(--text2); white-space: nowrap; }
-  .fee-row input { width: 80px; }
-
-  /* Link buttons */
-  .link-btn {
-    display: inline-block;
-    font-size: 11px;
-    padding: 3px 10px;
-    border-radius: 20px;
-    text-decoration: none;
-    font-weight: 500;
-    transition: opacity 0.15s;
-  }
-  .link-btn:hover { opacity: 0.8; }
-  .tcg-btn { background: #1a2a4a; color: #7db8f7; border: 0.5px solid #2a3a6a; }
-  .ebay-btn { background: #2a1a0a; color: #f7a73d; border: 0.5px solid #4a3010; }
-
-  /* Mode toggle buttons */
-  .mode-btn {
-    padding: 7px 16px;
-    border-radius: var(--radius-sm);
-    font-size: 13px;
-    cursor: pointer;
-    border: 0.5px solid var(--border);
-    color: var(--text3);
-    background: transparent;
-    transition: all 0.15s;
-  }
-  .mode-btn:hover { color: var(--text); background: var(--bg3); }
-  .mode-btn.active { color: var(--text); background: var(--bg3); border-color: var(--accent); }
-
-  /* Divider */
-  hr { border: none; border-top: 0.5px solid var(--border); margin: 1rem 0; }
-
-  /* Empty state */
-  .empty { font-size: 14px; color: var(--text3); padding: 16px; text-align: center; }
-
-  /* Tab bar */
-  .tabs { display: flex; gap: 4px; margin-bottom: 1rem; }
-  .tab {
-    padding: 7px 16px;
-    border-radius: var(--radius-sm);
-    font-size: 13px;
-    cursor: pointer;
-    border: 0.5px solid transparent;
-    color: var(--text3);
-    background: transparent;
-    transition: all 0.15s;
-  }
-  .tab:hover { color: var(--text); background: var(--bg3); }
-  .tab.active { color: var(--text); background: var(--bg3); border-color: var(--border); }
-
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
-
-  /* Watchlist table */
-  .wl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .wl-table th { text-align: left; padding: 8px 12px; color: var(--text3); font-weight: 500; border-bottom: 0.5px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
-  .wl-table td { padding: 10px 12px; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
-  .wl-table tr:last-child td { border-bottom: none; }
-  .wl-table tr:hover td { background: var(--bg3); }
-  .del-btn { padding: 4px 10px; font-size: 12px; color: var(--red); border-color: #4a1a1a; }
-  .del-btn:hover { background: var(--red-bg); }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0c0c0f;--bg2:#13131a;--bg3:#1a1a24;--bg4:#22222f;
+  --border:#2a2a3a;--border2:#38384a;
+  --text:#e8e8f0;--text2:#9090a8;--text3:#5a5a72;
+  --accent:#7c6ff7;--accent2:#5a54c4;
+  --green:#4ade80;--green-bg:#0d2a1a;
+  --red:#f87171;--red-bg:#2a0d0d;
+  --yellow:#fbbf24;
+  --radius:10px;--radius-sm:6px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem 1rem;}
+.container{max-width:900px;margin:0 auto;}
+.header{margin-bottom:2rem;}
+.header h1{font-size:22px;font-weight:600;margin-bottom:4px;}
+.header p{font-size:13px;color:var(--text3);}
+.card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;}
+.label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;}
+input,textarea,select{background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;font-size:14px;padding:9px 12px;outline:none;transition:border-color .15s;width:100%;}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);}
+textarea{resize:vertical;min-height:90px;}
+input[type=number]{-moz-appearance:textfield;}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
+button{background:transparent;border:0.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);cursor:pointer;font-family:inherit;font-size:13px;padding:9px 18px;transition:background .15s,border-color .15s;white-space:nowrap;}
+button:hover{background:var(--bg4);border-color:var(--accent);}
+button:active{transform:scale(.98);}
+button:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+button.primary{background:var(--accent2);border-color:var(--accent);color:#fff;}
+button.primary:hover{background:var(--accent);}
+.row{display:flex;gap:10px;align-items:flex-start;}
+.row.center{align-items:center;}
+.grow{flex:1;}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+@media(max-width:600px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}}
+.status{font-size:13px;color:var(--text3);}
+.status.error{color:var(--red);}
+.status.loading::after{content:'';display:inline-block;width:8px;height:8px;border:1.5px solid var(--text3);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-left:8px;vertical-align:middle;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.tabs{display:flex;gap:4px;margin-bottom:1rem;flex-wrap:wrap;}
+.tab{padding:7px 16px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;border:0.5px solid transparent;color:var(--text3);background:transparent;transition:all .15s;}
+.tab:hover{color:var(--text);background:var(--bg3);}
+.tab.active{color:var(--text);background:var(--bg3);border-color:var(--accent);}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+.mode-btn{padding:7px 16px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;border:0.5px solid var(--border);color:var(--text3);background:transparent;transition:all .15s;}
+.mode-btn:hover{color:var(--text);background:var(--bg3);}
+.mode-btn.active{color:var(--text);background:var(--bg3);border-color:var(--accent);}
+.result-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;}
+.result-header{padding:12px 16px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.result-query{font-size:13px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;}
+.result-count{font-size:12px;color:var(--text3);}
+.product-row{padding:12px 16px;border-bottom:0.5px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;}
+.product-row:last-child{border-bottom:none;}
+.product-name{font-size:14px;color:var(--text);text-decoration:none;}
+.product-name:hover{color:var(--accent);}
+.product-set{font-size:12px;color:var(--text3);margin-top:2px;}
+.badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle;}
+.badge-sealed{background:#1a1f4a;color:#8090f8;}
+.badge-subtype{background:var(--bg4);color:var(--text3);}
+.price-col{text-align:right;}
+.market{font-size:15px;font-weight:600;color:var(--text);}
+.low{font-size:12px;color:var(--text3);margin-top:2px;}
+.link-btn{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;text-decoration:none;font-weight:500;transition:opacity .15s;}
+.link-btn:hover{opacity:.8;}
+.tcg-btn{background:#1a2a4a;color:#7db8f7;border:0.5px solid #2a3a6a;}
+.ebay-btn{background:#2a1a0a;color:#f7a73d;border:0.5px solid #4a3010;}
+.calc-panel{background:var(--bg3);border-top:0.5px solid var(--border);padding:14px 16px;display:none;}
+.calc-panel.open{display:block;}
+.calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;}
+@media(max-width:600px){.calc-grid{grid-template-columns:repeat(2,1fr);}}
+.calc-grid .input-label{font-size:11px;color:var(--text3);margin-bottom:5px;}
+.calc-grid input{font-size:13px;padding:7px 10px;}
+.profit-bar{display:flex;align-items:flex-start;justify-content:space-between;padding:10px 14px;border-radius:var(--radius-sm);flex-wrap:wrap;gap:8px;}
+.profit-bar.pos{background:var(--green-bg);border:0.5px solid #1a4a2a;}
+.profit-bar.neg{background:var(--red-bg);border:0.5px solid #4a1a1a;}
+.profit-bar.neutral{background:var(--bg4);border:0.5px solid var(--border);}
+.profit-main{font-size:18px;font-weight:600;}
+.profit-main.pos{color:var(--green);}
+.profit-main.neg{color:var(--red);}
+.profit-main.neutral{color:var(--text3);}
+.profit-breakdown{display:flex;gap:16px;flex-wrap:wrap;}
+.pb-item{font-size:12px;color:var(--text3);}
+.pb-item span{color:var(--text2);}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;width:100%;}
+.metric{background:var(--bg4);border-radius:var(--radius-sm);padding:10px 12px;text-align:center;}
+.metric-val{font-size:18px;font-weight:600;margin-bottom:2px;}
+.metric-lbl{font-size:11px;color:var(--text3);}
+.del-btn{padding:4px 10px;font-size:12px;color:var(--red);border-color:#4a1a1a;}
+.del-btn:hover{background:var(--red-bg);}
+.empty{font-size:14px;color:var(--text3);padding:16px;text-align:center;}
+.progress-bar{background:var(--bg4);border-radius:4px;height:6px;margin:8px 0;overflow:hidden;}
+.progress-fill{height:100%;border-radius:4px;transition:width .3s;}
 </style>
 </head>
 <body>
 <div class="container">
 
-  <div class="header">
-    <h1>🃏 Pokemon Arbitrage</h1>
-    <p>Search TCGplayer prices for Japanese sealed products · calculate flip profit</p>
-  </div>
-
-  <!-- Tabs -->
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('search')">Search</button>
-    <button class="tab" onclick="switchTab('watchlist')">Watchlist</button>
-    <button class="tab" onclick="switchTab('flips')">Flip History</button>
-    <button class="tab" onclick="switchTab('settings')">Settings</button>
-  </div>
-
-  <!-- SEARCH TAB -->
-  <div id="tab-search" class="tab-content active">
-
-    <!-- Mode toggle -->
-    <div style="display:flex;gap:6px;margin-bottom:12px;">
-      <button id="modeSearchBtn" class="mode-btn active" onclick="setMode('search')">🔍 Search by name</button>
-      <button id="modeBrowseBtn" class="mode-btn" onclick="setMode('browse')">📦 Browse by set</button>
-    </div>
-
-    <!-- Search by name -->
-    <div id="modeSearch" class="card">
-      <div class="label">Product lookup</div>
-      <div class="row" style="margin-bottom:10px;">
-        <textarea id="queryInput" class="grow" placeholder="One product per line:&#10;Inferno X Booster Box&#10;Mega Dream ex Booster Box&#10;Pokemon Card 151 Booster Box"></textarea>
-      </div>
-      <div class="row center">
-        <button class="primary" id="searchBtn" onclick="searchAll()">Search TCGplayer →</button>
-        <button onclick="clearResults()" style="margin-left:6px;">Clear</button>
-        <span id="searchStatus" class="status" style="margin-left:10px;"></span>
-      </div>
-    </div>
-
-    <!-- Browse by set -->
-    <div id="modeBrowse" class="card" style="display:none;">
-      <div class="label">Browse Japanese sets</div>
-      <div class="row center" style="margin-bottom:12px;gap:10px;">
-        <select id="setSelect" class="grow" onchange="onSetChange()">
-          <option value="">Loading sets...</option>
-        </select>
-        <button class="primary" id="browseBtn" onclick="browseSet()" disabled>Browse set →</button>
-      </div>
-      <div id="setMeta" style="font-size:12px;color:var(--text3);"></div>
-    </div>
-
-    <div id="results"></div>
-
-  </div>
-
-  <!-- WATCHLIST TAB -->
-  <div id="tab-watchlist" class="tab-content">
-    <div class="card">
-      <div class="label">Saved products</div>
-      <div id="watchlistBody">
-        <div class="empty">No products saved yet. Search for a product and click "Save".</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- SETTINGS TAB -->
-  <div id="tab-settings" class="tab-content">
-    <div class="card">
-      <div class="label">Fee configuration</div>
-      <div class="grid-2" style="margin-bottom:12px;">
-        <div>
-          <div class="input-label" style="font-size:12px;color:var(--text3);margin-bottom:5px;">TCGplayer fee (%)</div>
-          <input type="number" id="cfg-tcgfee" value="15" min="0" max="100" step="0.1" onchange="saveSettings()">
-        </div>
-        <div>
-          <div class="input-label" style="font-size:12px;color:var(--text3);margin-bottom:5px;">TCGplayer processing fee (%)</div>
-          <input type="number" id="cfg-procfee" value="2.5" min="0" max="10" step="0.1" onchange="saveSettings()">
-        </div>
-        <div>
-          <div class="input-label" style="font-size:12px;color:var(--text3);margin-bottom:5px;">Default ship to buyer ($)</div>
-          <input type="number" id="cfg-shipout" value="5" min="0" step="0.5" onchange="saveSettings()">
-        </div>
-        <div>
-          <div class="input-label" style="font-size:12px;color:var(--text3);margin-bottom:5px;">Default ship to me ($)</div>
-          <input type="number" id="cfg-shipin" value="0" min="0" step="0.5" onchange="saveSettings()">
-        </div>
-      </div>
-      <div style="font-size:12px;color:var(--text3);">Total effective fee: <span id="cfg-totalfee" style="color:var(--text2);">17.5%</span></div>
-    </div>
-
-    <div class="card">
-      <div class="label">eBay API (coming soon)</div>
-      <div style="margin-bottom:10px;">
-        <div class="input-label" style="font-size:12px;color:var(--text3);margin-bottom:5px;">eBay App ID (Client ID)</div>
-        <input type="text" id="cfg-ebaykey" placeholder="Paste your eBay Browse API key here" onchange="saveSettings()">
-      </div>
-      <div style="font-size:12px;color:var(--text3);">Once you have your eBay API key, paste it here and eBay listings will automatically populate in search results.</div>
-    </div>
-  </div>
-
-  <!-- FLIP HISTORY TAB -->
-  <div id="tab-flips" class="tab-content">
-
-    <!-- Summary metrics -->
-    <div class="grid-3" style="margin-bottom:1rem;">
-      <div class="metric">
-        <div class="metric-val" id="fm-total">$0.00</div>
-        <div class="metric-lbl">Total profit</div>
-      </div>
-      <div class="metric">
-        <div class="metric-val" id="fm-flips">0</div>
-        <div class="metric-lbl">Lots · Boxes</div>
-      </div>
-      <div class="metric">
-        <div class="metric-val" id="fm-roi">0%</div>
-        <div class="metric-lbl">Avg ROI</div>
-      </div>
-    </div>
-
-    <!-- Log a purchase -->
-    <div class="card" style="margin-bottom:1rem;">
-      <div class="label">Log a purchase</div>
-      <div class="grid-2" style="margin-bottom:10px;">
-        <div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Product (from watchlist)</div>
-          <select id="fl-name" style="width:100%;">
-            <option value="">— Select —</option>
-          </select>
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Or type product name</div>
-          <input type="text" id="fl-name-custom" placeholder="e.g. Inferno X Booster Box">
-        </div>
-      </div>
-      <div class="grid-3" style="margin-bottom:10px;">
-        <div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Qty purchased</div>
-          <input type="number" id="fl-qty" value="1" min="1" step="1" oninput="previewPurchase()">
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Total paid ($)</div>
-          <input type="number" id="fl-buy-total" placeholder="0.00" step="0.01" oninput="previewPurchase()">
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Total shipping to me ($)</div>
-          <input type="number" id="fl-shipin" value="0" step="0.01" oninput="previewPurchase()">
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">TCGplayer fee (%)</div>
-          <input type="number" id="fl-fee" value="17.5" step="0.1">
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Date purchased</div>
-          <input type="date" id="fl-date">
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">eBay listing URL (optional)</div>
-          <input type="text" id="fl-ebay-url" placeholder="https://ebay.com/...">
-        </div>
-      </div>
-      <!-- Per box preview -->
-      <div id="fl-perbox" style="display:none;background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:10px;">
-        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Per box cost</div>
-        <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:13px;">
-          <div class="pb-item">Buy/box <span id="fl-pb-cost" style="color:var(--text);font-weight:500;">—</span></div>
-          <div class="pb-item">Ship/box <span id="fl-pb-ship" style="color:var(--text);font-weight:500;">—</span></div>
-          <div class="pb-item">Total cost/box <span id="fl-pb-total" style="color:var(--text);font-weight:600;">—</span></div>
-        </div>
-      </div>
-      <div class="row center">
-        <button class="primary" onclick="logPurchase()">Log purchase →</button>
-        <span id="fl-status-msg" class="status" style="margin-left:10px;"></span>
-      </div>
-    </div>
-
-    <!-- Flip log -->
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div class="label" style="margin:0;">Purchase log</div>
-        <button onclick="exportFlips()" style="font-size:12px;padding:5px 12px;">Export CSV</button>
-      </div>
-      <div id="flipLog"><div class="empty">No purchases logged yet.</div></div>
-    </div>
-
-  </div>
-
+<div class="header">
+  <h1>🃏 Pokemon Arbitrage</h1>
+  <p>Search TCGplayer prices for Japanese sealed products · calculate flip profit</p>
 </div>
 
-<script>
-// ─── Config ───────────────────────────────────────────────────────────────────
-const BASE = 'https://tcgtracking.com/tcgapi/v1';
-const CAT = 85; // Pokemon Japan
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('search')">Search</button>
+  <button class="tab" onclick="switchTab('watchlist')">Watchlist</button>
+  <button class="tab" onclick="switchTab('flips')">Flip History</button>
+  <button class="tab" onclick="switchTab('settings')">Settings</button>
+</div>
 
-let settings = {
-  tcgFee: 15,
-  procFee: 2.5,
-  shipOut: 5,
-  shipIn: 0,
-  ebayKey: ''
-};
+<!-- SEARCH TAB -->
+<div id="tab-search" class="tab-content active">
+  <div style="display:flex;gap:6px;margin-bottom:12px;">
+    <button id="modeSearchBtn" class="mode-btn active" onclick="setMode('search')">🔍 Search by name</button>
+    <button id="modeBrowseBtn" class="mode-btn" onclick="setMode('browse')">📦 Browse by set</button>
+  </div>
+  <div id="modeSearch" class="card">
+    <div class="label">Product lookup</div>
+    <div class="row" style="margin-bottom:10px;">
+      <textarea id="queryInput" class="grow" placeholder="One product per line:&#10;Inferno X Booster Box&#10;Mega Dream ex Booster Box&#10;Terastal Fest ex Booster Box"></textarea>
+    </div>
+    <div class="row center">
+      <button class="primary" id="searchBtn" onclick="searchAll()">Search TCGplayer →</button>
+      <button onclick="clearResults()" style="margin-left:6px;">Clear</button>
+      <span id="searchStatus" class="status" style="margin-left:10px;"></span>
+    </div>
+  </div>
+  <div id="modeBrowse" class="card" style="display:none;">
+    <div class="label">Browse Japanese sets</div>
+    <div class="row center" style="margin-bottom:12px;gap:10px;">
+      <select id="setSelect" class="grow" onchange="onSetChange()">
+        <option value="">Loading sets...</option>
+      </select>
+      <button class="primary" id="browseBtn" onclick="browseSet()" disabled>Browse set →</button>
+    </div>
+    <div id="setMeta" style="font-size:12px;color:var(--text3);"></div>
+  </div>
+  <div id="results"></div>
+</div>
+
+<!-- WATCHLIST TAB -->
+<div id="tab-watchlist" class="tab-content">
+  <div class="card">
+    <div class="label">Saved products</div>
+    <div id="watchlistBody"><div class="empty">No products saved yet.</div></div>
+  </div>
+</div>
+
+<!-- FLIP HISTORY TAB -->
+<div id="tab-flips" class="tab-content">
+  <div class="grid-3" style="margin-bottom:1rem;">
+    <div class="metric"><div class="metric-val" id="fm-total">$0.00</div><div class="metric-lbl">Total profit</div></div>
+    <div class="metric"><div class="metric-val" id="fm-count">0</div><div class="metric-lbl">Lots · Boxes</div></div>
+    <div class="metric"><div class="metric-val" id="fm-roi">0%</div><div class="metric-lbl">Avg ROI</div></div>
+  </div>
+  <div class="card" style="margin-bottom:1rem;">
+    <div class="label">Log a purchase</div>
+    <div class="grid-2" style="margin-bottom:10px;">
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Product (from watchlist / sets)</div>
+        <select id="fl-name" style="width:100%;"><option value="">— Select —</option></select>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Or type product name</div>
+        <input type="text" id="fl-name-custom" placeholder="e.g. Inferno X Booster Box">
+      </div>
+    </div>
+    <div class="grid-3" style="margin-bottom:10px;">
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Qty purchased</div>
+        <input type="number" id="fl-qty" value="1" min="1" step="1" oninput="previewPurchase()">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Total paid ($)</div>
+        <input type="number" id="fl-buy-total" placeholder="0.00" step="0.01" oninput="previewPurchase()">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Total shipping to me ($)</div>
+        <input type="number" id="fl-shipin" value="0" step="0.01" oninput="previewPurchase()">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">TCGplayer fee (%)</div>
+        <input type="number" id="fl-fee" value="17.5" step="0.1">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Date purchased</div>
+        <input type="date" id="fl-date">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">eBay listing URL (optional)</div>
+        <input type="text" id="fl-ebay-url" placeholder="https://ebay.com/...">
+      </div>
+    </div>
+    <div id="fl-perbox" style="display:none;background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:10px;">
+      <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Per box cost</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:13px;">
+        <div class="pb-item">Buy/box <span id="fl-pb-cost" style="color:var(--text);font-weight:500;">—</span></div>
+        <div class="pb-item">Ship/box <span id="fl-pb-ship" style="color:var(--text);font-weight:500;">—</span></div>
+        <div class="pb-item">Total/box <span id="fl-pb-total" style="color:var(--text);font-weight:600;">—</span></div>
+      </div>
+    </div>
+    <div class="row center">
+      <button class="primary" onclick="logPurchase()">Log purchase →</button>
+      <span id="fl-msg" class="status" style="margin-left:10px;"></span>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="label" style="margin:0;">Purchase log</div>
+      <button onclick="exportFlips()" style="font-size:12px;padding:5px 12px;">Export CSV</button>
+    </div>
+    <div id="flipLog"><div class="empty">No purchases logged yet.</div></div>
+  </div>
+</div>
+
+<!-- SETTINGS TAB -->
+<div id="tab-settings" class="tab-content">
+  <div class="card">
+    <div class="label">Fee configuration</div>
+    <div class="grid-2" style="margin-bottom:12px;">
+      <div><div style="font-size:12px;color:var(--text3);margin-bottom:5px;">TCGplayer fee (%)</div><input type="number" id="cfg-tcgfee" value="15" step="0.1" onchange="saveSettings()"></div>
+      <div><div style="font-size:12px;color:var(--text3);margin-bottom:5px;">Processing fee (%)</div><input type="number" id="cfg-procfee" value="2.5" step="0.1" onchange="saveSettings()"></div>
+      <div><div style="font-size:12px;color:var(--text3);margin-bottom:5px;">Default ship to buyer ($)</div><input type="number" id="cfg-shipout" value="5" step="0.5" onchange="saveSettings()"></div>
+      <div><div style="font-size:12px;color:var(--text3);margin-bottom:5px;">Default ship to me ($)</div><input type="number" id="cfg-shipin" value="0" step="0.5" onchange="saveSettings()"></div>
+    </div>
+    <div style="font-size:12px;color:var(--text3);">Total effective fee: <span id="cfg-totalfee" style="color:var(--text2);">17.5%</span></div>
+  </div>
+  <div class="card">
+    <div class="label">eBay API (coming soon)</div>
+    <div style="margin-bottom:10px;">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:5px;">eBay App ID</div>
+      <input type="text" id="cfg-ebaykey" placeholder="Paste your eBay Browse API key here" onchange="saveSettings()">
+    </div>
+    <div style="font-size:12px;color:var(--text3);">Once you have your eBay API key, paste it here and listings will auto-populate in search results.</div>
+  </div>
+</div>
+
+</div><!-- end container -->
+<script>
+// ─── Constants ────────────────────────────────────────────────────────────────
+const BASE = 'https://tcgtracking.com/tcgapi/v1';
+const CAT = 85;
+
+// Hardcoded main JP sets — reliable fallback
+const MAIN_JP_SETS = [
+  {id:24721,name:'M6a: MEGA Expansion 30th Celebration',abbreviation:'m6a',published_on:'2026-09-16'},
+  {id:24600,name:'M5: Chaos Rising',abbreviation:'m5',published_on:'2026-05-23'},
+  {id:24499,name:'M4: Perfect Order',abbreviation:'m4',published_on:'2026-03-28'},
+  {id:24400,name:'M3b: Ascended Heroes',abbreviation:'m3b',published_on:'2026-01-24'},
+  {id:24350,name:'M3a: Phantasmal Flames',abbreviation:'m3a',published_on:'2025-11-28'},
+  {id:24300,name:'M3: Pitch Black',abbreviation:'m3',published_on:'2025-10-24'},
+  {id:24250,name:'M2b: Ninja Spinner',abbreviation:'m2b',published_on:'2025-10-24'},
+  {id:24200,name:'M2a: Mega Dream ex',abbreviation:'m2a',published_on:'2025-09-26'},
+  {id:24150,name:'M2: Inferno X',abbreviation:'m2',published_on:'2025-09-26'},
+  {id:24100,name:'M1S: Mega Symphonia',abbreviation:'m1s',published_on:'2025-07-25'},
+  {id:24050,name:'M1L: Mega Brave',abbreviation:'m1l',published_on:'2025-07-25'},
+  {id:23900,name:'SV8a: Terastal Fest ex',abbreviation:'sv8a',published_on:'2025-06-27'},
+  {id:23850,name:'SV8: Surging Sparks',abbreviation:'sv8',published_on:'2025-04-25'},
+  {id:23800,name:'SV7: Stellar Crown',abbreviation:'sv7',published_on:'2024-09-13'},
+  {id:23750,name:'SV6a: Mask of Change',abbreviation:'sv6a',published_on:'2024-06-07'},
+  {id:23700,name:'SV6: Twilight Masquerade',abbreviation:'sv6',published_on:'2024-04-26'},
+  {id:23650,name:'SV5a: Crimson Haze',abbreviation:'sv5a',published_on:'2024-02-23'},
+  {id:23600,name:'SV5: Wild Force / Cyber Judge',abbreviation:'sv5',published_on:'2024-01-26'},
+  {id:23550,name:'SV4a: Shiny Treasure ex',abbreviation:'sv4a',published_on:'2023-12-01'},
+  {id:23500,name:'SV4: Paradox Rift',abbreviation:'sv4',published_on:'2023-10-27'},
+];
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let settings = {tcgFee:15,procFee:2.5,shipOut:5,shipIn:0,ebayKey:''};
 let watchlist = [];
 let flips = [];
+let allSets = [];
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 function init() {
   try {
-    const s = localStorage.getItem('arb-settings');
-    if (s) settings = { ...settings, ...JSON.parse(s) };
-    const w = localStorage.getItem('arb-watchlist');
-    if (w) watchlist = JSON.parse(w);
-    const f = localStorage.getItem('arb-flips');
-    if (f) flips = JSON.parse(f);
-  } catch(e) {}
+    const s = localStorage.getItem('arb-settings'); if(s) settings={...settings,...JSON.parse(s)};
+    const w = localStorage.getItem('arb-watchlist'); if(w) watchlist=JSON.parse(w);
+    const f = localStorage.getItem('arb-flips'); if(f) flips=JSON.parse(f);
+  } catch(e){}
   document.getElementById('cfg-tcgfee').value = settings.tcgFee;
   document.getElementById('cfg-procfee').value = settings.procFee;
   document.getElementById('cfg-shipout').value = settings.shipOut;
   document.getElementById('cfg-shipin').value = settings.shipIn;
-  document.getElementById('cfg-ebaykey').value = settings.ebayKey || '';
-  // Set default date to today
+  document.getElementById('cfg-ebaykey').value = settings.ebayKey||'';
   document.getElementById('fl-date').value = new Date().toISOString().slice(0,10);
   document.getElementById('fl-fee').value = settings.tcgFee + settings.procFee;
-  document.getElementById('fl-shipout').value = settings.shipOut;
-  document.getElementById('fl-shipin').value = settings.shipIn;
+  document.getElementById('fl-shipout') && (document.getElementById('fl-shipout').value = settings.shipOut);
   updateTotalFee();
   renderWatchlist();
 }
 
 function saveSettings() {
-  settings.tcgFee = parseFloat(document.getElementById('cfg-tcgfee').value) || 15;
-  settings.procFee = parseFloat(document.getElementById('cfg-procfee').value) || 2.5;
-  settings.shipOut = parseFloat(document.getElementById('cfg-shipout').value) || 5;
-  settings.shipIn = parseFloat(document.getElementById('cfg-shipin').value) || 0;
+  settings.tcgFee = parseFloat(document.getElementById('cfg-tcgfee').value)||15;
+  settings.procFee = parseFloat(document.getElementById('cfg-procfee').value)||2.5;
+  settings.shipOut = parseFloat(document.getElementById('cfg-shipout').value)||5;
+  settings.shipIn = parseFloat(document.getElementById('cfg-shipin').value)||0;
   settings.ebayKey = document.getElementById('cfg-ebaykey').value.trim();
-  localStorage.setItem('arb-settings', JSON.stringify(settings));
+  localStorage.setItem('arb-settings',JSON.stringify(settings));
   updateTotalFee();
 }
 
 function updateTotalFee() {
-  const total = (settings.tcgFee || 15) + (settings.procFee || 2.5);
-  document.getElementById('cfg-totalfee').textContent = total.toFixed(1) + '%';
+  document.getElementById('cfg-totalfee').textContent = (settings.tcgFee+settings.procFee).toFixed(1)+'%';
 }
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 function switchTab(name) {
-  const tabs = ['search','watchlist','flips','settings'];
-  document.querySelectorAll('.tab').forEach((t, i) => {
-    t.classList.toggle('active', tabs[i] === name);
+  const tabs=['search','watchlist','flips','settings'];
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===name));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='flips'){renderFlipLog();populateFlipDropdown();}
+}
+
+// ─── Set browser ──────────────────────────────────────────────────────────────
+async function loadSets() {
+  try {
+    const res = await fetch(`${BASE}/${CAT}/sets`);
+    if(!res.ok) throw new Error();
+    const data = await res.json();
+    const JP = /^(m\d|sv\d|s\d+a?|sm\d)/i;
+    const apiSets = (data.sets||[])
+      .filter(s=>s.abbreviation&&s.product_count>0&&JP.test(s.abbreviation))
+      .sort((a,b)=>b.abbreviation.localeCompare(a.abbreviation,undefined,{numeric:true}))
+      .slice(0,30);
+    allSets = apiSets.length >= 5 ? apiSets : MAIN_JP_SETS;
+  } catch(e) {
+    allSets = MAIN_JP_SETS;
+  }
+  const sel = document.getElementById('setSelect');
+  sel.innerHTML = '<option value="">— Select a set —</option>';
+  allSets.forEach(s=>{
+    const o=document.createElement('option');
+    o.value=s.id; o.textContent=s.name;
+    sel.appendChild(o);
   });
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-  if (name === 'flips') { renderFlipLog(); populateFlipDropdown(); }
+  document.getElementById('browseBtn').disabled=false;
+  populateFlipDropdown();
+}
+
+function onSetChange() {
+  const s = allSets.find(s=>String(s.id)===document.getElementById('setSelect').value);
+  document.getElementById('setMeta').textContent = s ? `Released ${s.published_on||'unknown'} · ${s.abbreviation?.toUpperCase()||''}` : '';
+}
+
+async function browseSet() {
+  const setId = document.getElementById('setSelect').value;
+  if(!setId) return;
+  const set = allSets.find(s=>String(s.id)===setId);
+  if(!set) return;
+  document.getElementById('results').innerHTML='';
+  const btn=document.getElementById('browseBtn');
+  btn.disabled=true; btn.textContent='Loading...';
+  const card=document.createElement('div');
+  card.className='result-card';
+  card.innerHTML=`<div class="result-header"><span class="result-query">${esc(set.name)}</span><span class="result-count status loading">Fetching products...</span></div>`;
+  document.getElementById('results').appendChild(card);
+  try {
+    const [pRes,prRes]=await Promise.all([
+      fetch(`${BASE}/${CAT}/sets/${setId}`),
+      fetch(`${BASE}/${CAT}/sets/${setId}/pricing`)
+    ]);
+    const pData=await pRes.json();
+    const prData=await prRes.json();
+    const products=pData.products||[];
+    const prices=prData.prices||{};
+    const matches=[];
+    for(const p of products){
+      const tcg=prices[p.id]?.tcg||{};
+      for(const [sub,obj] of Object.entries(tcg)){
+        if(!obj.market) continue;
+        const isSealed=/box|pack|tin|bundle|collection/i.test(p.name);
+        matches.push({p,set,sub,market:obj.market,low:obj.low,isSealed});
+      }
+    }
+    matches.sort((a,b)=>{
+      if(a.isSealed!==b.isSealed) return a.isSealed?-1:1;
+      return parseFloat(b.market)-parseFloat(a.market);
+    });
+    if(!matches.length){
+      card.innerHTML=`<div class="result-header"><span class="result-query">${esc(set.name)}</span><span class="status error">No products with pricing found</span></div>`;
+    } else {
+      let html=`<div class="result-header"><span class="result-query">${esc(set.name)}</span><span class="result-count">${matches.length} product(s)</span></div>`;
+      matches.forEach((m,idx)=>{
+        const multiSub=matches.filter(x=>x.p.id===m.p.id).length>1;
+        const uid=`p_${m.p.id}_${idx}_${Date.now()}`;
+        const tcgUrl=m.p.tcgplayer_url||`https://www.tcgplayer.com/product/${m.p.id}`;
+        const ebayUrl=buildEbayUrl(m.p.name);
+        html+=buildProductRow(m,uid,tcgUrl,ebayUrl,set.name,multiSub);
+      });
+      card.innerHTML=html;
+    }
+  } catch(e){
+    card.innerHTML=`<div class="result-header"><span class="result-query">${esc(set.name)}</span><span class="status error">Error: ${e.message}</span></div>`;
+  }
+  btn.disabled=false; btn.textContent='Browse set →';
+}
+
+function setMode(mode){
+  document.getElementById('modeSearch').style.display=mode==='search'?'block':'none';
+  document.getElementById('modeBrowse').style.display=mode==='browse'?'block':'none';
+  document.getElementById('modeSearchBtn').classList.toggle('active',mode==='search');
+  document.getElementById('modeBrowseBtn').classList.toggle('active',mode==='browse');
+  document.getElementById('results').innerHTML='';
 }
 
 // ─── Search ───────────────────────────────────────────────────────────────────
-function setStatus(msg, type) {
-  const el = document.getElementById('searchStatus');
-  el.textContent = msg;
-  el.className = 'status' + (type ? ' ' + type : '');
+function setStatus(msg,type){
+  const el=document.getElementById('searchStatus');
+  el.textContent=msg; el.className='status'+(type?' '+type:'');
 }
 
-async function searchAll() {
-  const lines = document.getElementById('queryInput').value
-    .split('\n').map(l => l.trim()).filter(Boolean);
-  if (!lines.length) return;
-  document.getElementById('results').innerHTML = '';
-  document.getElementById('searchBtn').disabled = true;
-  for (let i = 0; i < lines.length; i++) {
-    setStatus(`Searching ${i+1} of ${lines.length}...`, 'loading');
+async function searchAll(){
+  const lines=document.getElementById('queryInput').value.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) return;
+  document.getElementById('results').innerHTML='';
+  document.getElementById('searchBtn').disabled=true;
+  for(let i=0;i<lines.length;i++){
+    setStatus(`Searching ${i+1} of ${lines.length}...`,'loading');
     await searchOne(lines[i]);
   }
   setStatus(`Done — ${lines.length} product(s) searched.`);
-  document.getElementById('searchBtn').disabled = false;
+  document.getElementById('searchBtn').disabled=false;
 }
 
-// Simplify query: strip product type suffixes and pull meaningful keywords
-function buildSearchTerms(query) {
-  // Remove common suffixes that confuse the set search
-  const cleaned = query
-    .replace(/booster box|booster pack|elite trainer box|etb|tin|bundle|collection box|set|sealed/gi, '')
-    .replace(/[-–—:|,]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  const terms = [];
-  // Try progressively shorter versions
-  const words = cleaned.split(' ').filter(w => w.length > 1);
-  if (words.length > 2) terms.push(words.slice(0, 3).join(' '));
-  if (words.length > 1) terms.push(words.slice(0, 2).join(' '));
-  if (words.length > 0) terms.push(words[0]);
-  // Also try original minus everything after a dash/colon
-  const short = query.split(/[-–—:|]/)[0].trim();
-  if (short && short !== query && !terms.includes(short)) terms.unshift(short);
-  // Dedupe
+function buildSearchTerms(query){
+  const cleaned=query.replace(/booster box|booster pack|elite trainer box|etb|tin|bundle|collection box|set|sealed/gi,'').replace(/[-–—:|,]/g,' ').replace(/\s+/g,' ').trim();
+  const terms=[];
+  const words=cleaned.split(' ').filter(w=>w.length>1);
+  if(words.length>2) terms.push(words.slice(0,3).join(' '));
+  if(words.length>1) terms.push(words.slice(0,2).join(' '));
+  if(words.length>0) terms.push(words[0]);
+  const short=query.split(/[-–—:|]/)[0].trim();
+  if(short&&short!==query&&!terms.includes(short)) terms.unshift(short);
   return [...new Set(terms)].filter(Boolean);
 }
 
-async function searchOne(query) {
-  const container = document.getElementById('results');
-  const card = document.createElement('div');
-  card.className = 'result-card';
-  card.innerHTML = `
-    <div class="result-header">
-      <span class="result-query">${esc(query)}</span>
-      <span class="result-count status loading">Fetching prices...</span>
-    </div>`;
+async function searchOne(query){
+  const container=document.getElementById('results');
+  const card=document.createElement('div');
+  card.className='result-card';
+  card.innerHTML=`<div class="result-header"><span class="result-query">${esc(query)}</span><span class="result-count status loading">Fetching prices...</span></div>`;
   container.appendChild(card);
-
   try {
-    // Try multiple search terms until we get sets
-    const searchTerms = buildSearchTerms(query);
-    let sets = [];
-    let usedTerm = query;
-    for (const term of searchTerms) {
-      const res = await fetch(`${BASE}/${CAT}/search?q=${encodeURIComponent(term)}`);
-      if (!res.ok) continue;
-      const data = await res.json();
-      if (data.sets && data.sets.length) {
-        sets = data.sets.slice(0, 4);
-        usedTerm = term;
-        break;
-      }
+    const searchTerms=buildSearchTerms(query);
+    let sets=[];
+    for(const term of searchTerms){
+      const res=await fetch(`${BASE}/${CAT}/search?q=${encodeURIComponent(term)}`);
+      if(!res.ok) continue;
+      const data=await res.json();
+      if(data.sets&&data.sets.length){sets=data.sets.slice(0,4);break;}
     }
-    // Fallback: try original query
-    if (!sets.length) {
-      const res = await fetch(`${BASE}/${CAT}/search?q=${encodeURIComponent(query)}`);
-      if (res.ok) {
-        const data = await res.json();
-        sets = (data.sets || []).slice(0, 4);
-      }
+    if(!sets.length){
+      const res=await fetch(`${BASE}/${CAT}/search?q=${encodeURIComponent(query)}`);
+      if(res.ok){const data=await res.json();sets=(data.sets||[]).slice(0,4);}
     }
-
-    if (!sets.length) {
-      card.innerHTML = `<div class="result-header"><span class="result-query">${esc(query)}</span><span class="status error">No sets found — try a shorter name like "Inferno X" or "Surging Sparks"</span></div>`;
+    if(!sets.length){
+      card.innerHTML=`<div class="result-header"><span class="result-query">${esc(query)}</span><span class="status error">No sets found — try a shorter name like "Inferno X"</span></div>`;
       return;
     }
-
-    const matches = [];
-    const qWords = query.toLowerCase()
-      .replace(/[-–—:|,]/g, ' ')
-      .split(' ')
-      .filter(w => w.length > 2 && !['booster','box','pack','sealed','the','and','for'].includes(w));
-
-    for (const set of sets) {
-      try {
-        const [pRes, prRes] = await Promise.all([
-          fetch(`${BASE}/${CAT}/sets/${set.id}`),
-          fetch(`${BASE}/${CAT}/sets/${set.id}/pricing`)
-        ]);
-        const pData = await pRes.json();
-        const prData = await prRes.json();
-        const products = pData.products || [];
-        const prices = prData.prices || {};
-
-        for (const p of products) {
-          const nl = (p.name || '').toLowerCase();
-          const isSealed = /box|pack|tin|bundle|collection/i.test(p.name);
-          // For sealed products be lenient, for cards require word match
-          const hits = qWords.filter(w => nl.includes(w)).length;
-          const threshold = isSealed ? 0 : Math.max(1, Math.floor(qWords.length * 0.5));
-          if (hits < threshold && !isSealed) continue;
-          const tcg = prices[p.id]?.tcg || {};
-          for (const [sub, obj] of Object.entries(tcg)) {
-            if (!obj.market) continue;
-            matches.push({ p, set, sub, market: obj.market, low: obj.low, hits: hits + (isSealed ? 10 : 0) });
+    const matches=[];
+    const qWords=query.toLowerCase().replace(/[-–—:|,]/g,' ').split(' ').filter(w=>w.length>2&&!['booster','box','pack','sealed','the','and','for'].includes(w));
+    for(const set of sets){
+      try{
+        const [pRes,prRes]=await Promise.all([fetch(`${BASE}/${CAT}/sets/${set.id}`),fetch(`${BASE}/${CAT}/sets/${set.id}/pricing`)]);
+        const pData=await pRes.json(); const prData=await prRes.json();
+        const products=pData.products||{}; const prices=prData.prices||{};
+        for(const p of (Array.isArray(products)?products:Object.values(products))){
+          const nl=(p.name||'').toLowerCase();
+          const isSealed=/box|pack|tin|bundle|collection/i.test(p.name);
+          const hits=qWords.filter(w=>nl.includes(w)).length;
+          if(hits<1&&!isSealed) continue;
+          const tcg=prices[p.id]?.tcg||{};
+          for(const [sub,obj] of Object.entries(tcg)){
+            if(!obj.market) continue;
+            matches.push({p,set,sub,market:obj.market,low:obj.low,isSealed,hits:hits+(isSealed?10:0)});
           }
         }
-      } catch(e) {}
+      }catch(e){}
     }
-
-    // Sort: sealed first, then by match quality
-    matches.sort((a, b) => {
-      const aS = /box|pack|tin|bundle|collection/i.test(a.p.name) ? 0 : 1;
-      const bS = /box|pack|tin|bundle|collection/i.test(b.p.name) ? 0 : 1;
-      return aS - bS || b.hits - a.hits;
+    matches.sort((a,b)=>{
+      const aS=/box|pack|tin|bundle/i.test(a.p.name)?0:1;
+      const bS=/box|pack|tin|bundle/i.test(b.p.name)?0:1;
+      return aS-bS||b.hits-a.hits;
     });
-
-    if (!matches.length) {
-      card.innerHTML = `<div class="result-header"><span class="result-query">${esc(query)}</span><span class="status error">No products with pricing found</span></div>`;
+    if(!matches.length){
+      card.innerHTML=`<div class="result-header"><span class="result-query">${esc(query)}</span><span class="status error">No products with pricing found</span></div>`;
       return;
     }
-
-    let html = `<div class="result-header">
-      <span class="result-query">${esc(query)}</span>
-      <span class="result-count">${matches.length} result(s)</span>
-    </div>`;
-
-    matches.slice(0, 10).forEach((m, idx) => {
-      const isSealed = /box|pack|tin|bundle|collection/i.test(m.p.name);
-      const multiSub = matches.filter(x => x.p.id === m.p.id).length > 1;
-      const uid = `p_${m.p.id}_${idx}_${Date.now()}`;
-      const tcgUrl = m.p.tcgplayer_url || `https://www.tcgplayer.com/product/${m.p.id}`;
-      const ebayUrl = buildEbayUrl(m.p.name);
-      html += `
-        <div class="product-row">
-          <div>
-            <a class="product-name" href="${esc(tcgUrl)}" target="_blank" rel="noopener">
-              ${esc(m.p.name)}
-              ${isSealed ? '<span class="badge badge-sealed">sealed</span>' : ''}
-              ${multiSub ? `<span class="badge badge-subtype">${esc(m.sub)}</span>` : ''}
-            </a>
-            <div class="product-set">${esc(m.set.name)}</div>
-            <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
-              <a href="${esc(tcgUrl)}" target="_blank" rel="noopener" class="link-btn tcg-btn">TCGplayer ↗</a>
-              <a href="${esc(ebayUrl)}" target="_blank" rel="noopener" class="link-btn ebay-btn">eBay US listings ↗</a>
-            </div>
-          </div>
-          <div class="price-col">
-            <div class="market">$${parseFloat(m.market).toFixed(2)}</div>
-            ${m.low ? `<div class="low">Low $${parseFloat(m.low).toFixed(2)}</div>` : ''}
-          </div>
-          <div style="display:flex;gap:6px;flex-direction:column;align-items:flex-end;">
-            <button onclick="toggleCalc('${uid}')" style="font-size:12px;padding:5px 12px;">Calc profit</button>
-            <button onclick="saveToWatchlist('${esc(m.p.name)}','${esc(m.set.name)}',${parseFloat(m.market)},${m.low ? parseFloat(m.low) : 0},'${esc(tcgUrl)}','${esc(ebayUrl)}','${uid}')" style="font-size:12px;padding:5px 12px;">Save</button>
-          </div>
-        </div>
-        <div class="calc-panel" id="${uid}">
-          ${buildCalcHTML(uid, parseFloat(m.market))}
-        </div>`;
+    let html=`<div class="result-header"><span class="result-query">${esc(query)}</span><span class="result-count">${matches.length} result(s)</span></div>`;
+    matches.slice(0,10).forEach((m,idx)=>{
+      const multiSub=matches.filter(x=>x.p.id===m.p.id).length>1;
+      const uid=`p_${m.p.id}_${idx}_${Date.now()}`;
+      const tcgUrl=m.p.tcgplayer_url||`https://www.tcgplayer.com/product/${m.p.id}`;
+      const ebayUrl=buildEbayUrl(m.p.name);
+      html+=buildProductRow(m,uid,tcgUrl,ebayUrl,m.set.name,multiSub);
     });
-
-    card.innerHTML = html;
-
-  } catch(e) {
-    card.innerHTML = `<div class="result-header"><span class="result-query">${esc(query)}</span><span class="status error">Error: ${e.message}. Make sure you're on the Vercel URL, not a local file.</span></div>`;
+    card.innerHTML=html;
+  }catch(e){
+    card.innerHTML=`<div class="result-header"><span class="result-query">${esc(query)}</span><span class="status error">Error: ${e.message}</span></div>`;
   }
 }
 
-function buildCalcHTML(uid, tcgPrice) {
+function buildProductRow(m,uid,tcgUrl,ebayUrl,setName,multiSub){
+  const isSealed=/box|pack|tin|bundle|collection/i.test(m.p.name);
   return `
-    <div class="calc-grid">
-      <div>
-        <div class="input-label">eBay price ($)</div>
-        <input type="number" id="${uid}_ebay" placeholder="0.00" step="0.01"
-          oninput="calcProfit('${uid}', ${tcgPrice})">
-      </div>
-      <div>
-        <div class="input-label">Ship to me ($)</div>
-        <input type="number" id="${uid}_shipin" value="${settings.shipIn}" step="0.01"
-          oninput="calcProfit('${uid}', ${tcgPrice})">
-      </div>
-      <div>
-        <div class="input-label">Ship to buyer ($)</div>
-        <input type="number" id="${uid}_shipout" value="${settings.shipOut}" step="0.01"
-          oninput="calcProfit('${uid}', ${tcgPrice})">
-      </div>
-      <div>
-        <div class="input-label">TCGplayer fee (%)</div>
-        <input type="number" id="${uid}_fee" value="${settings.tcgFee + settings.procFee}" step="0.1"
-          oninput="calcProfit('${uid}', ${tcgPrice})">
+  <div class="product-row">
+    <div>
+      <a class="product-name" href="${esc(tcgUrl)}" target="_blank" rel="noopener">
+        ${esc(m.p.name)}
+        ${isSealed?'<span class="badge badge-sealed">sealed</span>':''}
+        ${multiSub?`<span class="badge badge-subtype">${esc(m.sub)}</span>`:''}
+      </a>
+      <div class="product-set">${esc(setName)}</div>
+      <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+        <a href="${esc(tcgUrl)}" target="_blank" rel="noopener" class="link-btn tcg-btn">TCGplayer ↗</a>
+        <a href="${esc(ebayUrl)}" target="_blank" rel="noopener" class="link-btn ebay-btn">eBay US listings ↗</a>
       </div>
     </div>
-    <div id="${uid}_result">
-      <div class="profit-bar neutral">
-        <span class="profit-main neutral">Enter eBay price to calculate</span>
-      </div>
-    </div>`;
+    <div class="price-col">
+      <div class="market">$${parseFloat(m.market).toFixed(2)}</div>
+      ${m.low?`<div class="low">Low $${parseFloat(m.low).toFixed(2)}</div>`:''}
+    </div>
+    <div style="display:flex;gap:6px;flex-direction:column;align-items:flex-end;">
+      <button onclick="toggleCalc('${uid}')" style="font-size:12px;padding:5px 12px;">Calc profit</button>
+      <button onclick="saveToWatchlist('${esc(m.p.name)}','${esc(setName)}',${parseFloat(m.market)},${m.low?parseFloat(m.low):0},'${esc(tcgUrl)}','${esc(ebayUrl)}','${uid}')" style="font-size:12px;padding:5px 12px;">Save</button>
+    </div>
+  </div>
+  <div class="calc-panel" id="${uid}">${buildCalcHTML(uid,parseFloat(m.market))}</div>`;
 }
 
-function toggleCalc(uid) {
-  const panel = document.getElementById(uid);
-  if (!panel) return;
-  panel.classList.toggle('open');
-  if (panel.classList.contains('open')) {
-    const inp = document.getElementById(uid + '_ebay');
-    if (inp) inp.focus();
-  }
+function buildCalcHTML(uid,tcgPrice){
+  return `
+  <div class="calc-grid">
+    <div><div class="input-label">eBay price ($)</div><input type="number" id="${uid}_ebay" placeholder="0.00" step="0.01" oninput="calcProfit('${uid}',${tcgPrice})"></div>
+    <div><div class="input-label">Ship to me ($)</div><input type="number" id="${uid}_shipin" value="${settings.shipIn}" step="0.01" oninput="calcProfit('${uid}',${tcgPrice})"></div>
+    <div><div class="input-label">Ship to buyer ($)</div><input type="number" id="${uid}_shipout" value="${settings.shipOut}" step="0.01" oninput="calcProfit('${uid}',${tcgPrice})"></div>
+    <div><div class="input-label">Fee (%)</div><input type="number" id="${uid}_fee" value="${settings.tcgFee+settings.procFee}" step="0.1" oninput="calcProfit('${uid}',${tcgPrice})"></div>
+  </div>
+  <div id="${uid}_result"><div class="profit-bar neutral"><span class="profit-main neutral">Enter eBay price to calculate</span></div></div>`;
 }
 
-function calcProfit(uid, tcgPrice) {
-  const ebay = parseFloat(document.getElementById(uid + '_ebay')?.value) || 0;
-  const shipIn = parseFloat(document.getElementById(uid + '_shipin')?.value) || 0;
-  const shipOut = parseFloat(document.getElementById(uid + '_shipout')?.value) || 0;
-  const feeRate = (parseFloat(document.getElementById(uid + '_fee')?.value) || 17.5) / 100;
-  const resultEl = document.getElementById(uid + '_result');
-  if (!resultEl) return;
-  if (!ebay) {
-    resultEl.innerHTML = `<div class="profit-bar neutral"><span class="profit-main neutral">Enter eBay price to calculate</span></div>`;
-    return;
-  }
-  const fee = tcgPrice * feeRate;
-  const totalCost = ebay + shipIn;
-  const revenue = tcgPrice - fee - shipOut;
-  const profit = revenue - ebay - shipIn;
-  const margin = tcgPrice > 0 ? (profit / tcgPrice * 100) : 0;
-  const roi = totalCost > 0 ? (profit / totalCost * 100) : 0;
-  const cls = profit > 0 ? 'pos' : profit < 0 ? 'neg' : 'neutral';
-  const sign = profit >= 0 ? '+' : '';
-  resultEl.innerHTML = `
-    <div class="profit-bar ${cls}">
-      <div>
-        <div class="profit-main ${cls}">${sign}$${Math.abs(profit).toFixed(2)} profit</div>
-        <div class="profit-breakdown" style="margin-top:6px;">
-          <div class="pb-item">TCGplayer sale <span>$${tcgPrice.toFixed(2)}</span></div>
-          <div class="pb-item">Fee (${(feeRate*100).toFixed(1)}%) <span>-$${fee.toFixed(2)}</span></div>
-          <div class="pb-item">Ship out <span>-$${shipOut.toFixed(2)}</span></div>
-          <div class="pb-item">eBay cost <span>-$${ebay.toFixed(2)}</span></div>
-          <div class="pb-item">Ship in <span>-$${shipIn.toFixed(2)}</span></div>
-        </div>
-      </div>
-      <div class="metrics">
-        <div class="metric">
-          <div class="metric-val" style="color:${profit>0?'var(--green)':profit<0?'var(--red)':'var(--text3)'};">${sign}$${Math.abs(profit).toFixed(2)}</div>
-          <div class="metric-lbl">Net profit</div>
-        </div>
-        <div class="metric">
-          <div class="metric-val" style="color:${margin>0?'var(--green)':margin<0?'var(--red)':'var(--text3)'};">${margin.toFixed(1)}%</div>
-          <div class="metric-lbl">Margin</div>
-        </div>
-        <div class="metric">
-          <div class="metric-val" style="color:${roi>0?'var(--green)':roi<0?'var(--red)':'var(--text3)'};">${roi.toFixed(1)}%</div>
-          <div class="metric-lbl">ROI</div>
-        </div>
-      </div>
-    </div>`;
+function toggleCalc(uid){
+  const p=document.getElementById(uid);
+  if(!p) return;
+  p.classList.toggle('open');
+  if(p.classList.contains('open')){const i=document.getElementById(uid+'_ebay');if(i)i.focus();}
 }
 
-// ─── Debounce helper ──────────────────────────────────────────────────────────
-const debounceTimers = {};
-function debounce(key, fn, delay = 300) {
-  clearTimeout(debounceTimers[key]);
-  debounceTimers[key] = setTimeout(fn, delay);
-}
-function updateWatchlistCalcDebounced(idx) {
-  debounce(`wl_${idx}`, () => updateWatchlistCalc(idx), 300);
+function calcProfit(uid,tcgPrice){
+  const ebay=parseFloat(document.getElementById(uid+'_ebay')?.value)||0;
+  const shipIn=parseFloat(document.getElementById(uid+'_shipin')?.value)||0;
+  const shipOut=parseFloat(document.getElementById(uid+'_shipout')?.value)||0;
+  const feeRate=(parseFloat(document.getElementById(uid+'_fee')?.value)||17.5)/100;
+  const el=document.getElementById(uid+'_result');
+  if(!el) return;
+  if(!ebay){el.innerHTML=`<div class="profit-bar neutral"><span class="profit-main neutral">Enter eBay price to calculate</span></div>`;return;}
+  const fee=tcgPrice*feeRate;
+  const profit=tcgPrice-fee-shipOut-ebay-shipIn;
+  const totalCost=ebay+shipIn;
+  const margin=tcgPrice>0?(profit/tcgPrice*100):0;
+  const roi=totalCost>0?(profit/totalCost*100):0;
+  const cls=profit>0?'pos':profit<0?'neg':'neutral';
+  const sign=profit>=0?'+':'';
+  el.innerHTML=`
+  <div class="profit-bar ${cls}">
+    <div>
+      <div class="profit-main ${cls}">${sign}$${Math.abs(profit).toFixed(2)} profit</div>
+      <div class="profit-breakdown" style="margin-top:6px;">
+        <div class="pb-item">TCGplayer <span>$${tcgPrice.toFixed(2)}</span></div>
+        <div class="pb-item">Fee (${(feeRate*100).toFixed(1)}%) <span>-$${fee.toFixed(2)}</span></div>
+        <div class="pb-item">Ship out <span>-$${shipOut.toFixed(2)}</span></div>
+        <div class="pb-item">eBay cost <span>-$${ebay.toFixed(2)}</span></div>
+        <div class="pb-item">Ship in <span>-$${shipIn.toFixed(2)}</span></div>
+      </div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-val" style="color:${profit>0?'var(--green)':profit<0?'var(--red)':'var(--text3)'};">${sign}$${Math.abs(profit).toFixed(2)}</div><div class="metric-lbl">Profit</div></div>
+      <div class="metric"><div class="metric-val" style="color:${margin>0?'var(--green)':margin<0?'var(--red)':'var(--text3)'};">${margin.toFixed(1)}%</div><div class="metric-lbl">Margin</div></div>
+      <div class="metric"><div class="metric-val" style="color:${roi>0?'var(--green)':roi<0?'var(--red)':'var(--text3)'};">${roi.toFixed(1)}%</div><div class="metric-lbl">ROI</div></div>
+    </div>
+  </div>`;
 }
 
 // ─── Watchlist ────────────────────────────────────────────────────────────────
-function saveToWatchlist(name, set, market, low, url, ebayUrl, uid) {
-  if (watchlist.find(w => w.name === name)) {
-    alert(`"${name}" is already in your watchlist.`);
-    return;
-  }
-  // Capture calc inputs if they exist
-  const ebayPrice = parseFloat(document.getElementById(uid + '_ebay')?.value) || 0;
-  const shipIn = parseFloat(document.getElementById(uid + '_shipin')?.value) || settings.shipIn;
-  const shipOut = parseFloat(document.getElementById(uid + '_shipout')?.value) || settings.shipOut;
-  const feeRate = parseFloat(document.getElementById(uid + '_fee')?.value) || (settings.tcgFee + settings.procFee);
-  const fee = market * (feeRate / 100);
-  const profit = ebayPrice ? (market - fee - shipOut - ebayPrice - shipIn) : null;
+const debounceTimers={};
+function debounce(key,fn,delay=300){clearTimeout(debounceTimers[key]);debounceTimers[key]=setTimeout(fn,delay);}
+function updateWatchlistCalcDebounced(idx){debounce(`wl_${idx}`,()=>updateWatchlistCalc(idx),300);}
 
-  watchlist.push({
-    name, set, market, low, url,
-    ebayUrl: ebayUrl || '',
-    saved: new Date().toLocaleDateString(),
-    ebayPrice: ebayPrice || null,
-    shipIn, shipOut, feeRate,
-    profit
-  });
-  localStorage.setItem('arb-watchlist', JSON.stringify(watchlist));
+function saveToWatchlist(name,set,market,low,url,ebayUrl,uid){
+  if(watchlist.find(w=>w.name===name)){alert(`"${name}" is already in your watchlist.`);return;}
+  const ebayPrice=parseFloat(document.getElementById(uid+'_ebay')?.value)||0;
+  const shipIn=parseFloat(document.getElementById(uid+'_shipin')?.value)||settings.shipIn;
+  const shipOut=parseFloat(document.getElementById(uid+'_shipout')?.value)||settings.shipOut;
+  const feeRate=parseFloat(document.getElementById(uid+'_fee')?.value)||(settings.tcgFee+settings.procFee);
+  const fee=market*(feeRate/100);
+  const profit=ebayPrice?(market-fee-shipOut-ebayPrice-shipIn):null;
+  watchlist.push({name,set,market,low,url,ebayUrl:ebayUrl||'',saved:new Date().toLocaleDateString(),ebayPrice:ebayPrice||null,shipIn,shipOut,feeRate,profit});
+  localStorage.setItem('arb-watchlist',JSON.stringify(watchlist));
   renderWatchlist();
   switchTab('watchlist');
 }
 
-function updateWatchlistCalc(idx) {
-  const w = watchlist[idx];
-  const ebay = parseFloat(document.getElementById(`wl_${idx}_ebay`)?.value) || 0;
-  const shipIn = parseFloat(document.getElementById(`wl_${idx}_shipin`)?.value) || 0;
-  const shipOut = parseFloat(document.getElementById(`wl_${idx}_shipout`)?.value) || 0;
-  const feeRate = parseFloat(document.getElementById(`wl_${idx}_fee`)?.value) || 17.5;
-  const market = parseFloat(w.market);
-  const fee = market * (feeRate / 100);
-  const profit = market - fee - shipOut - ebay - shipIn;
-  const roi = (ebay + shipIn) > 0 ? (profit / (ebay + shipIn) * 100) : 0;
-  const cls = profit > 0 ? 'pos' : profit < 0 ? 'neg' : 'neutral';
-  const sign = profit >= 0 ? '+' : '';
-  const el = document.getElementById(`wl_${idx}_result`);
-  if (!el) return;
-  if (!ebay) { el.innerHTML = `<span style="color:var(--text3);font-size:13px;">Enter eBay price to calculate profit</span>`; return; }
-  el.innerHTML = `
-    <div class="profit-bar ${cls}" style="margin-top:10px;">
-      <div>
-        <div class="profit-main ${cls}">${sign}$${Math.abs(profit).toFixed(2)} profit</div>
-        <div class="profit-breakdown" style="margin-top:4px;">
-          <div class="pb-item">TCGplayer <span>$${market.toFixed(2)}</span></div>
-          <div class="pb-item">Fee (${feeRate}%) <span>-$${fee.toFixed(2)}</span></div>
-          <div class="pb-item">Ship out <span>-$${shipOut.toFixed(2)}</span></div>
-          <div class="pb-item">eBay cost <span>-$${ebay.toFixed(2)}</span></div>
-          <div class="pb-item">Ship in <span>-$${shipIn.toFixed(2)}</span></div>
-          <div class="pb-item">ROI <span style="color:${roi>0?'var(--green)':roi<0?'var(--red)':'var(--text3)'};">${roi.toFixed(1)}%</span></div>
-        </div>
+function updateWatchlistCalc(idx){
+  const w=watchlist[idx];
+  const ebay=parseFloat(document.getElementById(`wl_${idx}_ebay`)?.value)||0;
+  const shipIn=parseFloat(document.getElementById(`wl_${idx}_shipin`)?.value)||0;
+  const shipOut=parseFloat(document.getElementById(`wl_${idx}_shipout`)?.value)||0;
+  const feeRate=parseFloat(document.getElementById(`wl_${idx}_fee`)?.value)||17.5;
+  const market=parseFloat(w.market);
+  const fee=market*(feeRate/100);
+  const profit=market-fee-shipOut-ebay-shipIn;
+  const roi=(ebay+shipIn)>0?(profit/(ebay+shipIn)*100):0;
+  const cls=profit>0?'pos':profit<0?'neg':'neutral';
+  const sign=profit>=0?'+':'';
+  const el=document.getElementById(`wl_${idx}_result`);
+  if(!el) return;
+  if(!ebay){el.innerHTML=`<span style="color:var(--text3);font-size:13px;">Enter eBay price to calculate profit</span>`;return;}
+  el.innerHTML=`
+  <div class="profit-bar ${cls}">
+    <div>
+      <div class="profit-main ${cls}">${sign}$${Math.abs(profit).toFixed(2)} profit</div>
+      <div class="profit-breakdown" style="margin-top:4px;">
+        <div class="pb-item">TCGplayer <span>$${market.toFixed(2)}</span></div>
+        <div class="pb-item">Fee (${feeRate}%) <span>-$${fee.toFixed(2)}</span></div>
+        <div class="pb-item">Ship out <span>-$${shipOut.toFixed(2)}</span></div>
+        <div class="pb-item">eBay cost <span>-$${ebay.toFixed(2)}</span></div>
+        <div class="pb-item">Ship in <span>-$${shipIn.toFixed(2)}</span></div>
+        <div class="pb-item">ROI <span style="color:${roi>0?'var(--green)':roi<0?'var(--red)':'var(--text3)'};">${roi.toFixed(1)}%</span></div>
       </div>
-    </div>`;
-  // Save updated values
-  watchlist[idx] = { ...w, ebayPrice: ebay, shipIn, shipOut, feeRate, profit };
-  localStorage.setItem('arb-watchlist', JSON.stringify(watchlist));
+    </div>
+  </div>`;
+  watchlist[idx]={...w,ebayPrice:ebay,shipIn,shipOut,feeRate,profit};
+  localStorage.setItem('arb-watchlist',JSON.stringify(watchlist));
 }
 
-function removeFromWatchlist(idx) {
-  watchlist.splice(idx, 1);
-  localStorage.setItem('arb-watchlist', JSON.stringify(watchlist));
+function removeFromWatchlist(idx){
+  watchlist.splice(idx,1);
+  localStorage.setItem('arb-watchlist',JSON.stringify(watchlist));
   renderWatchlist();
 }
 
-function renderWatchlist() {
-  const el = document.getElementById('watchlistBody');
-  if (!watchlist.length) {
-    el.innerHTML = '<div class="empty">No products saved yet. Search for a product and click "Save".</div>';
-    return;
-  }
-
-  let html = '';
-  watchlist.forEach((w, i) => {
-    const market = parseFloat(w.market);
-    const ebayPrice = w.ebayPrice || 0;
-    const shipIn = w.shipIn ?? settings.shipIn;
-    const shipOut = w.shipOut ?? settings.shipOut;
-    const feeRate = w.feeRate ?? (settings.tcgFee + settings.procFee);
-    const fee = market * (feeRate / 100);
-    const profit = ebayPrice ? (market - fee - shipOut - ebayPrice - shipIn) : null;
-    const roi = ebayPrice && (ebayPrice + shipIn) > 0 ? (profit / (ebayPrice + shipIn) * 100) : null;
-    const cls = profit !== null ? (profit > 0 ? 'pos' : profit < 0 ? 'neg' : 'neutral') : 'neutral';
-    const sign = profit >= 0 ? '+' : '';
-
-    html += `
-    <div style="border-bottom: 0.5px solid var(--border); padding: 14px 0;" id="wl_item_${i}">
-      <!-- Top row: name + price + links + remove -->
+function renderWatchlist(){
+  const el=document.getElementById('watchlistBody');
+  if(!watchlist.length){el.innerHTML='<div class="empty">No products saved yet.</div>';return;}
+  let html='';
+  watchlist.forEach((w,i)=>{
+    const market=parseFloat(w.market);
+    const ebayPrice=w.ebayPrice||0;
+    const shipIn=w.shipIn??settings.shipIn;
+    const shipOut=w.shipOut??settings.shipOut;
+    const feeRate=w.feeRate??(settings.tcgFee+settings.procFee);
+    const fee=market*(feeRate/100);
+    const profit=ebayPrice?(market-fee-shipOut-ebayPrice-shipIn):null;
+    const roi=profit!==null&&(ebayPrice+shipIn)>0?(profit/(ebayPrice+shipIn)*100):null;
+    const cls=profit!==null?(profit>0?'pos':profit<0?'neg':'neutral'):'neutral';
+    const sign=profit!==null&&profit>=0?'+':'';
+    html+=`
+    <div style="border-bottom:0.5px solid var(--border);padding:14px 0;">
       <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:start;">
         <div>
           <a href="${esc(w.url)}" target="_blank" style="color:var(--text);text-decoration:none;font-size:14px;font-weight:500;">${esc(w.name)}</a>
           <div style="font-size:12px;color:var(--text3);margin-top:2px;">${esc(w.set)} · Saved ${esc(w.saved)}</div>
           <div style="display:flex;gap:6px;margin-top:6px;">
             <a href="${esc(w.url)}" target="_blank" class="link-btn tcg-btn">TCG ↗</a>
-            ${w.ebayUrl ? `<a href="${esc(w.ebayUrl)}" target="_blank" class="link-btn ebay-btn">eBay ↗</a>` : ''}
+            ${w.ebayUrl?`<a href="${esc(w.ebayUrl)}" target="_blank" class="link-btn ebay-btn">eBay ↗</a>`:''}
           </div>
         </div>
         <div style="text-align:right;">
           <div style="font-size:15px;font-weight:600;">$${market.toFixed(2)}</div>
           <div style="font-size:12px;color:var(--text3);">market</div>
-          ${w.low ? `<div style="font-size:12px;color:var(--text3);">Low $${parseFloat(w.low).toFixed(2)}</div>` : ''}
+          ${w.low?`<div style="font-size:12px;color:var(--text3);">Low $${parseFloat(w.low).toFixed(2)}</div>`:''}
         </div>
-        ${profit !== null ? `
+        ${profit!==null?`
         <div style="text-align:right;">
           <div style="font-size:15px;font-weight:600;color:${profit>0?'var(--green)':profit<0?'var(--red)':'var(--text3)'};">${sign}$${Math.abs(profit).toFixed(2)}</div>
           <div style="font-size:12px;color:var(--text3);">profit</div>
-          ${roi !== null ? `<div style="font-size:12px;color:${roi>0?'var(--green)':roi<0?'var(--red)':'var(--text3)'};">${roi.toFixed(1)}% ROI</div>` : ''}
-        </div>` : '<div></div>'}
-        <div>
-          <button class="del-btn" onclick="removeFromWatchlist(${i})">Remove</button>
-        </div>
+          ${roi!==null?`<div style="font-size:12px;color:${roi>0?'var(--green)':roi<0?'var(--red)':'var(--text3)'};">${roi.toFixed(1)}% ROI</div>`:''}
+        </div>`:'<div></div>'}
+        <div><button class="del-btn" onclick="removeFromWatchlist(${i})">Remove</button></div>
       </div>
-
-      <!-- Calc row -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr) auto;gap:8px;margin-top:12px;align-items:flex-end;">
-        <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">eBay price ($)</div>
-          <input type="number" id="wl_${i}_ebay" value="${ebayPrice || ''}" placeholder="0.00" step="0.01"
-            oninput="updateWatchlistCalcDebounced(${i})" style="font-size:13px;padding:6px 10px;">
-        </div>
-        <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Ship to me ($)</div>
-          <input type="number" id="wl_${i}_shipin" value="${shipIn}" step="0.01"
-            oninput="updateWatchlistCalcDebounced(${i})" style="font-size:13px;padding:6px 10px;">
-        </div>
-        <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Ship to buyer ($)</div>
-          <input type="number" id="wl_${i}_shipout" value="${shipOut}" step="0.01"
-            oninput="updateWatchlistCalcDebounced(${i})" style="font-size:13px;padding:6px 10px;">
-        </div>
-        <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Fee (%)</div>
-          <input type="number" id="wl_${i}_fee" value="${feeRate}" step="0.1"
-            oninput="updateWatchlistCalcDebounced(${i})" style="font-size:13px;padding:6px 10px;">
-        </div>
-        <button onclick="updateWatchlistCalc(${i})" style="padding:6px 12px;font-size:12px;white-space:nowrap;">Recalc →</button>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">eBay price ($)</div><input type="number" id="wl_${i}_ebay" value="${ebayPrice||''}" placeholder="0.00" step="0.01" oninput="updateWatchlistCalcDebounced(${i})" style="font-size:13px;padding:6px 10px;"></div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Ship to me ($)</div><input type="number" id="wl_${i}_shipin" value="${shipIn}" step="0.01" oninput="updateWatchlistCalcDebounced(${i})" style="font-size:13px;padding:6px 10px;"></div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Ship to buyer ($)</div><input type="number" id="wl_${i}_shipout" value="${shipOut}" step="0.01" oninput="updateWatchlistCalcDebounced(${i})" style="font-size:13px;padding:6px 10px;"></div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Fee (%)</div><input type="number" id="wl_${i}_fee" value="${feeRate}" step="0.1" oninput="updateWatchlistCalcDebounced(${i})" style="font-size:13px;padding:6px 10px;"></div>
+        <button onclick="updateWatchlistCalc(${i})" style="padding:6px 12px;font-size:12px;">Recalc →</button>
       </div>
       <div id="wl_${i}_result" style="margin-top:8px;">
-        ${profit !== null ? `
+        ${profit!==null?`
         <div class="profit-bar ${cls}">
-          <div>
-            <div class="profit-main ${cls}">${sign}$${Math.abs(profit).toFixed(2)} profit</div>
-            <div class="profit-breakdown" style="margin-top:4px;">
-              <div class="pb-item">TCGplayer <span>$${market.toFixed(2)}</span></div>
-              <div class="pb-item">Fee (${feeRate}%) <span>-$${fee.toFixed(2)}</span></div>
-              <div class="pb-item">Ship out <span>-$${shipOut.toFixed(2)}</span></div>
-              <div class="pb-item">eBay cost <span>-$${ebayPrice.toFixed(2)}</span></div>
-              <div class="pb-item">Ship in <span>-$${shipIn.toFixed(2)}</span></div>
-            </div>
+          <div class="profit-main ${cls}">${sign}$${Math.abs(profit).toFixed(2)} profit</div>
+          <div class="profit-breakdown" style="margin-top:4px;">
+            <div class="pb-item">TCGplayer <span>$${market.toFixed(2)}</span></div>
+            <div class="pb-item">Fee (${feeRate}%) <span>-$${fee.toFixed(2)}</span></div>
+            <div class="pb-item">Ship out <span>-$${shipOut.toFixed(2)}</span></div>
+            <div class="pb-item">eBay cost <span>-$${ebayPrice.toFixed(2)}</span></div>
+            <div class="pb-item">Ship in <span>-$${shipIn.toFixed(2)}</span></div>
           </div>
-        </div>` : `<span style="color:var(--text3);font-size:13px;">Enter eBay price to calculate profit</span>`}
+        </div>`:`<span style="color:var(--text3);font-size:13px;">Enter eBay price to calculate profit</span>`}
       </div>
     </div>`;
   });
-
-  el.innerHTML = html;
-}
-
-// ─── eBay URL builder ─────────────────────────────────────────────────────────
-function buildEbayUrl(productName) {
-  // Build an eBay search URL: US only, Buy It Now, lowest price + shipping, sealed Pokemon
-  const query = encodeURIComponent(productName + ' Pokemon Japanese sealed');
-  // LH_BIN=1 = Buy It Now, LH_PrefLoc=1 = US only, _sop=15 = lowest price+shipping
-  return `https://www.ebay.com/sch/i.html?_nkw=${query}&LH_BIN=1&LH_PrefLoc=1&_sop=15&LH_ItemCondition=1000`;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function clearResults() {
-  document.getElementById('results').innerHTML = '';
-  document.getElementById('queryInput').value = '';
-  setStatus('');
-}
-
-function esc(s) {
-  return String(s)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&#39;');
+  el.innerHTML=html;
 }
 
 // ─── Flip History ─────────────────────────────────────────────────────────────
-function populateFlipDropdown() {
-  const sel = document.getElementById('fl-name');
-  if (!sel) return;
-  const prev = sel.value;
-  sel.innerHTML = '<option value="">— Select from watchlist —</option>';
-
-  // Add watchlist items
-  if (watchlist.length) {
-    const wlGroup = document.createElement('optgroup');
-    wlGroup.label = 'Watchlist';
-    watchlist.forEach(w => {
-      const opt = document.createElement('option');
-      opt.value = w.name;
-      opt.textContent = w.name;
-      wlGroup.appendChild(opt);
-    });
-    sel.appendChild(wlGroup);
+function populateFlipDropdown(){
+  const sel=document.getElementById('fl-name');
+  if(!sel) return;
+  const prev=sel.value;
+  sel.innerHTML='<option value="">— Select —</option>';
+  if(watchlist.length){
+    const g=document.createElement('optgroup'); g.label='Watchlist';
+    watchlist.forEach(w=>{const o=document.createElement('option');o.value=w.name;o.textContent=w.name;g.appendChild(o);});
+    sel.appendChild(g);
   }
-
-  // Add recent sets booster boxes from allSets names
-  if (allSets.length) {
-    const setGroup = document.createElement('optgroup');
-    setGroup.label = 'Recent Sets';
-    allSets.forEach(s => {
-      const opt = document.createElement('option');
-      opt.value = s.name + ' Booster Box';
-      opt.textContent = s.name + ' Booster Box';
-      setGroup.appendChild(opt);
-    });
-    sel.appendChild(setGroup);
+  if(allSets.length){
+    const g=document.createElement('optgroup'); g.label='Recent Sets';
+    allSets.forEach(s=>{const o=document.createElement('option');o.value=s.name+' Booster Box';o.textContent=s.name+' Booster Box';g.appendChild(o);});
+    sel.appendChild(g);
   }
-
-  if (prev) sel.value = prev;
+  if(prev) sel.value=prev;
 }
 
-function getFlipName() {
-  const custom = document.getElementById('fl-name-custom').value.trim();
-  const sel = document.getElementById('fl-name').value;
-  return custom || sel || '';
+function getFlipName(){
+  return document.getElementById('fl-name-custom').value.trim()||document.getElementById('fl-name').value||'';
 }
 
-function previewPurchase() {
-  const qty = Math.max(1, parseInt(document.getElementById('fl-qty').value) || 1);
-  const buyTotal = parseFloat(document.getElementById('fl-buy-total').value) || 0;
-  const shipInTotal = parseFloat(document.getElementById('fl-shipin').value) || 0;
-  const perboxEl = document.getElementById('fl-perbox');
-  if (buyTotal > 0) {
-    perboxEl.style.display = 'block';
-    document.getElementById('fl-pb-cost').textContent = `$${(buyTotal/qty).toFixed(2)}`;
-    document.getElementById('fl-pb-ship').textContent = `$${(shipInTotal/qty).toFixed(2)}`;
-    document.getElementById('fl-pb-total').textContent = `$${((buyTotal+shipInTotal)/qty).toFixed(2)}`;
+function previewPurchase(){
+  const qty=Math.max(1,parseInt(document.getElementById('fl-qty').value)||1);
+  const buyTotal=parseFloat(document.getElementById('fl-buy-total').value)||0;
+  const shipIn=parseFloat(document.getElementById('fl-shipin').value)||0;
+  const perboxEl=document.getElementById('fl-perbox');
+  if(buyTotal>0){
+    perboxEl.style.display='block';
+    document.getElementById('fl-pb-cost').textContent=`$${(buyTotal/qty).toFixed(2)}`;
+    document.getElementById('fl-pb-ship').textContent=`$${(shipIn/qty).toFixed(2)}`;
+    document.getElementById('fl-pb-total').textContent=`$${((buyTotal+shipIn)/qty).toFixed(2)}`;
   } else {
-    perboxEl.style.display = 'none';
+    perboxEl.style.display='none';
   }
 }
 
-function logPurchase() {
-  const name = getFlipName();
-  const date = document.getElementById('fl-date').value;
-  const qty = Math.max(1, parseInt(document.getElementById('fl-qty').value) || 1);
-  const buyTotal = parseFloat(document.getElementById('fl-buy-total').value) || 0;
-  const shipInTotal = parseFloat(document.getElementById('fl-shipin').value) || 0;
-  const feeRate = parseFloat(document.getElementById('fl-fee').value) || 17.5;
-  const ebayUrl = document.getElementById('fl-ebay-url').value.trim();
-  const msgEl = document.getElementById('fl-status-msg');
+function logPurchase(){
+  const name=getFlipName();
+  const date=document.getElementById('fl-date').value;
+  const qty=Math.max(1,parseInt(document.getElementById('fl-qty').value)||1);
+  const buyTotal=parseFloat(document.getElementById('fl-buy-total').value)||0;
+  const shipInTotal=parseFloat(document.getElementById('fl-shipin').value)||0;
+  const feeRate=parseFloat(document.getElementById('fl-fee').value)||17.5;
+  const ebayUrl=document.getElementById('fl-ebay-url').value.trim();
+  const msgEl=document.getElementById('fl-msg');
+  if(!name){msgEl.textContent='Select or enter a product name.';msgEl.className='status error';return;}
+  if(!buyTotal){msgEl.textContent='Enter the total amount paid.';msgEl.className='status error';return;}
+  const costPerBox=buyTotal/qty;
+  const shipPerBox=shipInTotal/qty;
+  const totalPerBox=costPerBox+shipPerBox;
+  flips.unshift({id:Date.now(),name,date,qty,buyTotal,shipInTotal,costPerBox,shipPerBox,totalPerBox,feeRate,ebayUrl,sales:[]});
+  localStorage.setItem('arb-flips',JSON.stringify(flips));
+  document.getElementById('fl-name').value='';
+  document.getElementById('fl-name-custom').value='';
+  document.getElementById('fl-qty').value='1';
+  document.getElementById('fl-buy-total').value='';
+  document.getElementById('fl-shipin').value='0';
+  document.getElementById('fl-ebay-url').value='';
+  document.getElementById('fl-perbox').style.display='none';
+  document.getElementById('fl-date').value=new Date().toISOString().slice(0,10);
+  msgEl.textContent=`✓ ${qty} box${qty>1?'es':''} logged!`;
+  msgEl.className='status';
+  setTimeout(()=>{msgEl.textContent='';},2500);
+  renderFlipLog();
+}
 
-  if (!name) { msgEl.textContent = 'Select or enter a product name.'; msgEl.className = 'status error'; return; }
-  if (!buyTotal) { msgEl.textContent = 'Enter the total amount paid.'; msgEl.className = 'status error'; return; }
+function addSale(flipId){
+  const qty=parseInt(document.getElementById(`sale_${flipId}_qty`).value)||1;
+  const price=parseFloat(document.getElementById(`sale_${flipId}_price`).value)||0;
+  const shipOut=parseFloat(document.getElementById(`sale_${flipId}_ship`).value)||0;
+  const date=document.getElementById(`sale_${flipId}_date`).value;
+  const msgEl=document.getElementById(`sale_${flipId}_msg`);
+  if(!price){msgEl.textContent='Enter a sale price.';msgEl.className='status error';return;}
+  const flip=flips.find(f=>f.id===flipId);
+  if(!flip) return;
+  const soldSoFar=(flip.sales||[]).reduce((s,x)=>s+x.qty,0);
+  if(soldSoFar+qty>flip.qty){msgEl.textContent=`Only ${flip.qty-soldSoFar} remaining.`;msgEl.className='status error';return;}
+  const fee=price*(flip.feeRate/100);
+  const profitPerBox=price-fee-shipOut-flip.totalPerBox;
+  const totalProfit=profitPerBox*qty;
+  const roi=flip.totalPerBox>0?(profitPerBox/flip.totalPerBox*100):0;
+  if(!flip.sales) flip.sales=[];
+  flip.sales.push({id:Date.now(),qty,price,shipOut,date,fee,profitPerBox,totalProfit,roi});
+  localStorage.setItem('arb-flips',JSON.stringify(flips));
+  document.getElementById(`sale_${flipId}_qty`).value='1';
+  document.getElementById(`sale_${flipId}_price`).value='';
+  document.getElementById(`sale_${flipId}_ship`).value='5';
+  msgEl.textContent='✓ Sale logged!'; msgEl.className='status';
+  setTimeout(()=>{msgEl.textContent='';},2000);
+  renderFlipLog();
+}
 
-  const costPerBox = buyTotal / qty;
-  const shipPerBox = shipInTotal / qty;
-  const totalPerBox = costPerBox + shipPerBox;
+function deleteSale(flipId,saleId){
+  const flip=flips.find(f=>f.id===flipId);
+  if(!flip) return;
+  flip.sales=(flip.sales||[]).filter(s=>s.id!==saleId);
+  localStorage.setItem('arb-flips',JSON.stringify(flips));
+  renderFlipLog();
+}
 
-  flips.unshift({
-    id: Date.now(),
-    name, date, qty,
-    buyTotal, shipInTotal,
-    costPerBox, shipPerBox, totalPerBox,
-    feeRate, ebayUrl,
-    sales: [] // individual sales logged against this lot
+function deleteFlip(id){
+  flips=flips.filter(f=>f.id!==id);
+  localStorage.setItem('arb-flips',JSON.stringify(flips));
+  renderFlipLog();
+}
+
+function updateFlipMetrics(){
+  let totalProfit=0,totalRoi=0,roiCount=0,totalBoxes=0;
+  flips.forEach(f=>{
+    totalBoxes+=f.qty||1;
+    (f.sales||[]).forEach(s=>{totalProfit+=s.totalProfit||0;totalRoi+=s.roi||0;roiCount++;});
   });
-  localStorage.setItem('arb-flips', JSON.stringify(flips));
-
-  // Reset form
-  document.getElementById('fl-name').value = '';
-  document.getElementById('fl-name-custom').value = '';
-  document.getElementById('fl-qty').value = '1';
-  document.getElementById('fl-buy-total').value = '';
-  document.getElementById('fl-shipin').value = '0';
-  document.getElementById('fl-ebay-url').value = '';
-  document.getElementById('fl-perbox').style.display = 'none';
-  document.getElementById('fl-date').value = new Date().toISOString().slice(0,10);
-  msgEl.textContent = `✓ ${qty} box${qty>1?'es':''} logged!`;
-  msgEl.className = 'status';
-  setTimeout(() => { msgEl.textContent = ''; }, 2500);
-
-  renderFlipLog();
+  const avgRoi=roiCount>0?totalRoi/roiCount:0;
+  const pEl=document.getElementById('fm-total');
+  pEl.textContent=(totalProfit>=0?'+':'')+`$${Math.abs(totalProfit).toFixed(2)}`;
+  pEl.style.color=totalProfit>0?'var(--green)':totalProfit<0?'var(--red)':'var(--text3)';
+  document.getElementById('fm-count').textContent=`${flips.length} lots · ${totalBoxes} boxes`;
+  const rEl=document.getElementById('fm-roi');
+  rEl.textContent=avgRoi.toFixed(1)+'%';
+  rEl.style.color=avgRoi>0?'var(--green)':avgRoi<0?'var(--red)':'var(--text3)';
 }
 
-function addSale(flipId) {
-  const qty = parseInt(document.getElementById(`sale_${flipId}_qty`).value) || 1;
-  const price = parseFloat(document.getElementById(`sale_${flipId}_price`).value) || 0;
-  const shipOut = parseFloat(document.getElementById(`sale_${flipId}_ship`).value) || 0;
-  const date = document.getElementById(`sale_${flipId}_date`).value;
-  const msgEl = document.getElementById(`sale_${flipId}_msg`);
-
-  if (!price) { msgEl.textContent = 'Enter a sale price.'; msgEl.className = 'status error'; return; }
-
-  const flip = flips.find(f => f.id === flipId);
-  if (!flip) return;
-
-  const soldSoFar = (flip.sales || []).reduce((s, x) => s + x.qty, 0);
-  if (soldSoFar + qty > flip.qty) {
-    msgEl.textContent = `Only ${flip.qty - soldSoFar} box${flip.qty-soldSoFar!==1?'es':''} remaining.`;
-    msgEl.className = 'status error';
-    return;
-  }
-
-  const fee = price * (flip.feeRate / 100);
-  const profitPerBox = price - fee - shipOut - flip.totalPerBox;
-  const totalProfit = profitPerBox * qty;
-  const roi = flip.totalPerBox > 0 ? (profitPerBox / flip.totalPerBox * 100) : 0;
-
-  if (!flip.sales) flip.sales = [];
-  flip.sales.push({ id: Date.now(), qty, price, shipOut, date, fee, profitPerBox, totalProfit, roi });
-  localStorage.setItem('arb-flips', JSON.stringify(flips));
-
-  // Clear sale inputs
-  document.getElementById(`sale_${flipId}_qty`).value = '1';
-  document.getElementById(`sale_${flipId}_price`).value = '';
-  document.getElementById(`sale_${flipId}_ship`).value = '5';
-  msgEl.textContent = `✓ Sale logged!`;
-  msgEl.className = 'status';
-  setTimeout(() => { msgEl.textContent = ''; }, 2000);
-
-  renderFlipLog();
-}
-
-function deleteSale(flipId, saleId) {
-  const flip = flips.find(f => f.id === flipId);
-  if (!flip) return;
-  flip.sales = (flip.sales || []).filter(s => s.id !== saleId);
-  localStorage.setItem('arb-flips', JSON.stringify(flips));
-  renderFlipLog();
-}
-
-function deleteFlip(id) {
-  flips = flips.filter(f => f.id !== id);
-  localStorage.setItem('arb-flips', JSON.stringify(flips));
-  renderFlipLog();
-}
-
-function updateFlipMetrics() {
-  let totalProfit = 0, totalRoi = 0, roiCount = 0, totalBoxes = 0;
-  flips.forEach(f => {
-    totalBoxes += f.qty || 1;
-    (f.sales || []).forEach(s => {
-      totalProfit += s.totalProfit || 0;
-      totalRoi += s.roi || 0;
-      roiCount++;
-    });
-  });
-  const avgRoi = roiCount > 0 ? totalRoi / roiCount : 0;
-  const profitEl = document.getElementById('fm-total');
-  profitEl.textContent = (totalProfit >= 0 ? '+' : '') + '$' + Math.abs(totalProfit).toFixed(2);
-  profitEl.style.color = totalProfit > 0 ? 'var(--green)' : totalProfit < 0 ? 'var(--red)' : 'var(--text3)';
-  document.getElementById('fm-flips').textContent = `${flips.length} lots · ${totalBoxes} boxes`;
-  const roiEl = document.getElementById('fm-roi');
-  roiEl.textContent = avgRoi.toFixed(1) + '%';
-  roiEl.style.color = avgRoi > 0 ? 'var(--green)' : avgRoi < 0 ? 'var(--red)' : 'var(--text3)';
-}
-
-function renderFlipLog() {
+function renderFlipLog(){
   updateFlipMetrics();
-  const el = document.getElementById('flipLog');
-  if (!flips.length) { el.innerHTML = '<div class="empty">No purchases logged yet.</div>'; return; }
-
-  let html = '';
-  flips.forEach(f => {
-    const sales = f.sales || [];
-    const soldQty = sales.reduce((s, x) => s + x.qty, 0);
-    const remaining = f.qty - soldQty;
-    const totalSaleProfit = sales.reduce((s, x) => s + x.totalProfit, 0);
-    const totalInvested = f.buyTotal + f.shipInTotal;
-    const pct = f.qty > 0 ? Math.round(soldQty / f.qty * 100) : 0;
-    const overallCls = totalSaleProfit > 0 ? 'pos' : totalSaleProfit < 0 ? 'neg' : 'neutral';
-    const sign = totalSaleProfit >= 0 ? '+' : '';
-    const statusLabel = remaining === 0 ? '✅ Fully sold' : soldQty > 0 ? `📋 ${remaining} remaining` : '⏳ None sold yet';
-
-    html += `<div style="border-bottom:0.5px solid var(--border);padding:16px 0;">
-
-      <!-- Lot header -->
-      <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:start;margin-bottom:12px;">
+  const el=document.getElementById('flipLog');
+  if(!flips.length){el.innerHTML='<div class="empty">No purchases logged yet.</div>';return;}
+  let html='';
+  flips.forEach(f=>{
+    const sales=f.sales||[];
+    const soldQty=sales.reduce((s,x)=>s+x.qty,0);
+    const remaining=f.qty-soldQty;
+    const totalSaleProfit=sales.reduce((s,x)=>s+x.totalProfit,0);
+    const pct=f.qty>0?Math.round(soldQty/f.qty*100):0;
+    const sign=totalSaleProfit>=0?'+':'';
+    const statusLabel=remaining===0?'✅ Fully sold':soldQty>0?`📋 ${remaining} remaining`:'⏳ None sold yet';
+    html+=`<div style="border-bottom:0.5px solid var(--border);padding:16px 0;">
+      <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:start;margin-bottom:10px;">
         <div>
-          <div style="font-size:15px;font-weight:500;color:var(--text);">${esc(f.name)}</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:2px;">
-            Purchased ${f.date || '—'} · ×${f.qty} boxes · $${f.totalPerBox.toFixed(2)}/box cost
-          </div>
+          <div style="font-size:15px;font-weight:500;">${esc(f.name)}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${f.date||'—'} · ×${f.qty} boxes · $${f.totalPerBox.toFixed(2)}/box cost</div>
           <div style="font-size:12px;margin-top:4px;color:var(--text2);">${statusLabel}</div>
-          ${f.ebayUrl ? `<a href="${esc(f.ebayUrl)}" target="_blank" class="link-btn ebay-btn" style="margin-top:6px;display:inline-block;">eBay listing ↗</a>` : ''}
+          ${f.ebayUrl?`<a href="${esc(f.ebayUrl)}" target="_blank" class="link-btn ebay-btn" style="margin-top:6px;display:inline-block;">eBay listing ↗</a>`:''}
         </div>
         <div style="text-align:right;">
           <div style="font-size:11px;color:var(--text3);">Invested</div>
-          <div style="font-size:14px;font-weight:600;">$${totalInvested.toFixed(2)}</div>
+          <div style="font-size:14px;font-weight:600;">$${(f.buyTotal+f.shipInTotal).toFixed(2)}</div>
           <div style="font-size:11px;color:var(--text3);">$${f.totalPerBox.toFixed(2)}/box</div>
         </div>
         <div style="text-align:right;">
@@ -1224,21 +870,15 @@ function renderFlipLog() {
         </div>
         <div><button class="del-btn" onclick="deleteFlip(${f.id})">Delete</button></div>
       </div>
-
-      <!-- Progress bar -->
-      <div style="background:var(--bg4);border-radius:4px;height:6px;margin-bottom:12px;overflow:hidden;">
-        <div style="height:100%;width:${pct}%;background:${remaining===0?'var(--green)':'var(--accent)'};border-radius:4px;transition:width 0.3s;"></div>
-      </div>
-
-      <!-- Sales list -->
-      ${sales.length ? `
-      <div style="margin-bottom:12px;">
-        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Sales</div>
-        ${sales.map(s => {
-          const sCls = s.profitPerBox > 0 ? 'pos' : s.profitPerBox < 0 ? 'neg' : 'neutral';
-          const sSign = s.profitPerBox >= 0 ? '+' : '';
-          return `<div style="display:grid;grid-template-columns:1fr auto auto auto auto auto;gap:10px;align-items:center;padding:8px 10px;background:var(--bg3);border-radius:var(--radius-sm);margin-bottom:4px;font-size:13px;">
-            <div style="color:var(--text2);">${s.date || '—'}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${remaining===0?'var(--green)':'var(--accent)'};"></div></div>
+      ${sales.length?`
+      <div style="margin:10px 0 8px;">
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Sales</div>
+        ${sales.map(s=>{
+          const sCls=s.profitPerBox>0?'pos':s.profitPerBox<0?'neg':'neutral';
+          const sSign=s.profitPerBox>=0?'+':'';
+          return `<div style="display:grid;grid-template-columns:1fr auto auto auto auto auto;gap:10px;align-items:center;padding:7px 10px;background:var(--bg3);border-radius:var(--radius-sm);margin-bottom:4px;font-size:13px;">
+            <div style="color:var(--text2);">${s.date||'—'}</div>
             <div>×${s.qty} box${s.qty>1?'es':''}</div>
             <div>$${s.price.toFixed(2)}/box</div>
             <div style="color:var(--text3);">-$${s.shipOut.toFixed(2)} ship</div>
@@ -1246,237 +886,63 @@ function renderFlipLog() {
             <button class="del-btn" onclick="deleteSale(${f.id},${s.id})" style="padding:2px 8px;font-size:11px;">✕</button>
           </div>`;
         }).join('')}
-      </div>` : ''}
-
-      <!-- Add sale form -->
-      ${remaining > 0 ? `
+      </div>`:''}
+      ${remaining>0?`
       <div style="background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:12px;">
-        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Log a sale (${remaining} box${remaining!==1?'es':''} available)</div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Log a sale (${remaining} box${remaining!==1?'es':''} available)</div>
         <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr auto;gap:8px;align-items:flex-end;">
-          <div>
-            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Qty</div>
-            <input type="number" id="sale_${f.id}_qty" value="1" min="1" max="${remaining}" step="1" style="font-size:13px;padding:6px 8px;">
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Sale price/box ($)</div>
-            <input type="number" id="sale_${f.id}_price" placeholder="0.00" step="0.01" style="font-size:13px;padding:6px 8px;">
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Ship to buyer ($)</div>
-            <input type="number" id="sale_${f.id}_ship" value="5" step="0.01" style="font-size:13px;padding:6px 8px;">
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Date sold</div>
-            <input type="date" id="sale_${f.id}_date" value="${new Date().toISOString().slice(0,10)}" style="font-size:13px;padding:6px 8px;">
-          </div>
-          <button onclick="addSale(${f.id})" style="padding:6px 14px;font-size:13px;white-space:nowrap;">Add sale →</button>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Qty</div><input type="number" id="sale_${f.id}_qty" value="1" min="1" max="${remaining}" step="1" style="font-size:13px;padding:6px 8px;"></div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Sale price/box ($)</div><input type="number" id="sale_${f.id}_price" placeholder="0.00" step="0.01" style="font-size:13px;padding:6px 8px;"></div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Ship to buyer ($)</div><input type="number" id="sale_${f.id}_ship" value="5" step="0.01" style="font-size:13px;padding:6px 8px;"></div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Date sold</div><input type="date" id="sale_${f.id}_date" value="${new Date().toISOString().slice(0,10)}" style="font-size:13px;padding:6px 8px;"></div>
+          <button onclick="addSale(${f.id})" style="padding:6px 14px;font-size:13px;">Add sale →</button>
         </div>
         <div style="margin-top:6px;"><span id="sale_${f.id}_msg" class="status"></span></div>
-      </div>` : `<div style="font-size:13px;color:var(--green);padding:8px 0;">✅ All ${f.qty} boxes sold</div>`}
-
+      </div>`:`<div style="font-size:13px;color:var(--green);padding:6px 0;">✅ All ${f.qty} boxes sold</div>`}
     </div>`;
   });
-
-  el.innerHTML = html;
+  el.innerHTML=html;
 }
 
-function exportFlips() {
-  if (!flips.length) return;
-  const rows = [['Product','Purchase Date','Qty','Total Paid','Ship In','Cost/Box','Sale Date','Sale Qty','Sale Price/Box','Ship Out','Fee %','Fee $','Profit/Box','Total Sale Profit','ROI %']];
-  flips.forEach(f => {
-    if (!f.sales || !f.sales.length) {
-      rows.push([`"${f.name}"`, f.date, f.qty, f.buyTotal, f.shipInTotal, f.totalPerBox.toFixed(2), '', '', '', '', f.feeRate, '', '', '', '']);
+function exportFlips(){
+  if(!flips.length) return;
+  const rows=[['Product','Purchase Date','Qty','Total Paid','Ship In','Cost/Box','Sale Date','Sale Qty','Sale Price/Box','Ship Out','Fee %','Fee $','Profit/Box','Total Sale Profit','ROI %']];
+  flips.forEach(f=>{
+    if(!f.sales||!f.sales.length){
+      rows.push([`"${f.name}"`,f.date,f.qty,f.buyTotal,f.shipInTotal,f.totalPerBox.toFixed(2),'','','','',f.feeRate,'','','','']);
     } else {
-      f.sales.forEach(s => {
-        rows.push([`"${f.name}"`, f.date, f.qty, f.buyTotal, f.shipInTotal, f.totalPerBox.toFixed(2), s.date, s.qty, s.price, s.shipOut, f.feeRate, s.fee.toFixed(2), s.profitPerBox.toFixed(2), s.totalProfit.toFixed(2), s.roi.toFixed(1)]);
+      f.sales.forEach(s=>{
+        rows.push([`"${f.name}"`,f.date,f.qty,f.buyTotal,f.shipInTotal,f.totalPerBox.toFixed(2),s.date,s.qty,s.price,s.shipOut,f.feeRate,s.fee.toFixed(2),s.profitPerBox.toFixed(2),s.totalProfit.toFixed(2),s.roi.toFixed(1)]);
       });
     }
   });
-  const csv = rows.map(r => r.join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `pokemon-flips-${new Date().toISOString().slice(0,10)}.csv`;
+  const csv=rows.map(r=>r.join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`pokemon-flips-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
 }
-// ─── Set browser ──────────────────────────────────────────────────────────────
-let allSets = [];
 
-async function loadSets() {
-  try {
-    const res = await fetch(`${BASE}/${CAT}/sets`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-
-    allSets = (data.sets || [])
-      .filter(s =>
-        s.abbreviation !== null &&
-        s.product_count > 0 &&
-        s.published_on &&
-        !s.name.toLowerCase().includes('promo') &&
-        !s.name.toLowerCase().includes('promotional') &&
-        !s.name.toLowerCase().includes('contest') &&
-        !s.name.toLowerCase().includes('vending') &&
-        !s.name.toLowerCase().includes('championship') &&
-        !s.name.toLowerCase().includes('fan club') &&
-        !s.name.toLowerCase().includes('unnumbered') &&
-        !s.name.toLowerCase().includes('corocoro') &&
-        !s.name.toLowerCase().includes('gym challenge') &&
-        !s.name.toLowerCase().includes('battle road') &&
-        !s.name.toLowerCase().includes('world hobby')
-      )
-      .sort((a, b) => new Date(b.published_on) - new Date(a.published_on))
-      .slice(0, 30);
-
-    // Populate Browse by set dropdown
-    const setSelect = document.getElementById('setSelect');
-    if (!allSets.length) {
-      setSelect.innerHTML = '<option value="">No main sets found</option>';
-    } else {
-      setSelect.innerHTML = '<option value="">— Select a set —</option>';
-      allSets.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.id;
-        opt.textContent = `${s.name} (${s.published_on?.slice(0,7) || ''})`;
-        setSelect.appendChild(opt);
-      });
-      document.getElementById('browseBtn').disabled = false;
-    }
-
-    // Populate flip log dropdown with same sets
-    populateFlipDropdown();
-
-  } catch(e) {
-    document.getElementById('setSelect').innerHTML = `<option value="">Failed to load sets: ${e.message}</option>`;
-  }
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function buildEbayUrl(productName){
+  const query=encodeURIComponent(productName+' Pokemon Japanese sealed');
+  return `https://www.ebay.com/sch/i.html?_nkw=${query}&LH_BIN=1&LH_PrefLoc=1&_sop=15&LH_ItemCondition=1000`;
 }
 
-function onSetChange() {
-  const select = document.getElementById('setSelect');
-  const setId = select.value;
-  const set = allSets.find(s => String(s.id) === setId);
-  const meta = document.getElementById('setMeta');
-  if (set) {
-    meta.textContent = `${set.product_count} products · Released ${set.published_on || 'unknown'} · ${set.abbreviation ? set.abbreviation.toUpperCase() : ''}`;
-  } else {
-    meta.textContent = '';
-  }
+function clearResults(){
+  document.getElementById('results').innerHTML='';
+  document.getElementById('queryInput').value='';
+  setStatus('');
+}
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 init();
 loadSets();
-
-async function browseSet() {
-  const select = document.getElementById('setSelect');
-  const setId = select.value;
-  if (!setId) return;
-  const set = allSets.find(s => String(s.id) === setId);
-  if (!set) return;
-
-  document.getElementById('results').innerHTML = '';
-  const btn = document.getElementById('browseBtn');
-  btn.disabled = true;
-  btn.textContent = 'Loading...';
-
-  const card = document.createElement('div');
-  card.className = 'result-card';
-  card.innerHTML = `
-    <div class="result-header">
-      <span class="result-query">${esc(set.name)}</span>
-      <span class="result-count status loading">Fetching products...</span>
-    </div>`;
-  document.getElementById('results').appendChild(card);
-
-  try {
-    const [pRes, prRes] = await Promise.all([
-      fetch(`${BASE}/${CAT}/sets/${setId}`),
-      fetch(`${BASE}/${CAT}/sets/${setId}/pricing`)
-    ]);
-    const pData = await pRes.json();
-    const prData = await prRes.json();
-    const products = pData.products || [];
-    const prices = prData.prices || {};
-
-    // Only show products with pricing
-    const matches = [];
-    for (const p of products) {
-      const tcg = prices[p.id]?.tcg || {};
-      for (const [sub, obj] of Object.entries(tcg)) {
-        if (!obj.market) continue;
-        const isSealed = /box|pack|tin|bundle|collection/i.test(p.name);
-        matches.push({ p, set, sub, market: obj.market, low: obj.low, isSealed });
-      }
-    }
-
-    // Sealed first, then by price descending
-    matches.sort((a, b) => {
-      if (a.isSealed !== b.isSealed) return a.isSealed ? -1 : 1;
-      return parseFloat(b.market) - parseFloat(a.market);
-    });
-
-    if (!matches.length) {
-      card.innerHTML = `<div class="result-header"><span class="result-query">${esc(set.name)}</span><span class="status error">No products with pricing found for this set</span></div>`;
-      btn.disabled = false;
-      btn.textContent = 'Browse set →';
-      return;
-    }
-
-    let html = `<div class="result-header">
-      <span class="result-query">${esc(set.name)}</span>
-      <span class="result-count">${matches.length} product(s) with pricing</span>
-    </div>`;
-
-    matches.forEach((m, idx) => {
-      const multiSub = matches.filter(x => x.p.id === m.p.id).length > 1;
-      const uid = `p_${m.p.id}_${idx}_${Date.now()}`;
-      const tcgUrl = m.p.tcgplayer_url || `https://www.tcgplayer.com/product/${m.p.id}`;
-      const ebayUrl = buildEbayUrl(m.p.name);
-      html += `
-        <div class="product-row">
-          <div>
-            <a class="product-name" href="${esc(tcgUrl)}" target="_blank" rel="noopener">
-              ${esc(m.p.name)}
-              ${m.isSealed ? '<span class="badge badge-sealed">sealed</span>' : ''}
-              ${multiSub ? `<span class="badge badge-subtype">${esc(m.sub)}</span>` : ''}
-            </a>
-            <div class="product-set">${esc(set.name)}</div>
-            <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
-              <a href="${esc(tcgUrl)}" target="_blank" rel="noopener" class="link-btn tcg-btn">TCGplayer ↗</a>
-              <a href="${esc(ebayUrl)}" target="_blank" rel="noopener" class="link-btn ebay-btn">eBay US listings ↗</a>
-            </div>
-          </div>
-          <div class="price-col">
-            <div class="market">$${parseFloat(m.market).toFixed(2)}</div>
-            ${m.low ? `<div class="low">Low $${parseFloat(m.low).toFixed(2)}</div>` : ''}
-          </div>
-          <div style="display:flex;gap:6px;flex-direction:column;align-items:flex-end;">
-            <button onclick="toggleCalc('${uid}')" style="font-size:12px;padding:5px 12px;">Calc profit</button>
-            <button onclick="saveToWatchlist('${esc(m.p.name)}','${esc(set.name)}',${parseFloat(m.market)},${m.low ? parseFloat(m.low) : 0},'${esc(tcgUrl)}','${esc(ebayUrl)}','${uid}')" style="font-size:12px;padding:5px 12px;">Save</button>
-          </div>
-        </div>
-        <div class="calc-panel" id="${uid}">
-          ${buildCalcHTML(uid, parseFloat(m.market))}
-        </div>`;
-    });
-
-    card.innerHTML = html;
-
-  } catch(e) {
-    card.innerHTML = `<div class="result-header"><span class="result-query">${esc(set.name)}</span><span class="status error">Error: ${e.message}</span></div>`;
-  }
-
-  btn.disabled = false;
-  btn.textContent = 'Browse set →';
-}
-
-function setMode(mode) {
-  document.getElementById('modeSearch').style.display = mode === 'search' ? 'block' : 'none';
-  document.getElementById('modeBrowse').style.display = mode === 'browse' ? 'block' : 'none';
-  document.getElementById('modeSearchBtn').classList.toggle('active', mode === 'search');
-  document.getElementById('modeBrowseBtn').classList.toggle('active', mode === 'browse');
-  document.getElementById('results').innerHTML = '';
-}
 </script>
 </body>
 </html>
