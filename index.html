@@ -253,6 +253,20 @@
   .tcg-btn { background: #1a2a4a; color: #7db8f7; border: 0.5px solid #2a3a6a; }
   .ebay-btn { background: #2a1a0a; color: #f7a73d; border: 0.5px solid #4a3010; }
 
+  /* Mode toggle buttons */
+  .mode-btn {
+    padding: 7px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    cursor: pointer;
+    border: 0.5px solid var(--border);
+    color: var(--text3);
+    background: transparent;
+    transition: all 0.15s;
+  }
+  .mode-btn:hover { color: var(--text); background: var(--bg3); }
+  .mode-btn.active { color: var(--text); background: var(--bg3); border-color: var(--accent); }
+
   /* Divider */
   hr { border: none; border-top: 0.5px solid var(--border); margin: 1rem 0; }
 
@@ -305,7 +319,14 @@
   <!-- SEARCH TAB -->
   <div id="tab-search" class="tab-content active">
 
-    <div class="card">
+    <!-- Mode toggle -->
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      <button id="modeSearchBtn" class="mode-btn active" onclick="setMode('search')">🔍 Search by name</button>
+      <button id="modeBrowseBtn" class="mode-btn" onclick="setMode('browse')">📦 Browse by set</button>
+    </div>
+
+    <!-- Search by name -->
+    <div id="modeSearch" class="card">
       <div class="label">Product lookup</div>
       <div class="row" style="margin-bottom:10px;">
         <textarea id="queryInput" class="grow" placeholder="One product per line:&#10;Inferno X Booster Box&#10;Mega Dream ex Booster Box&#10;Pokemon Card 151 Booster Box"></textarea>
@@ -315,6 +336,18 @@
         <button onclick="clearResults()" style="margin-left:6px;">Clear</button>
         <span id="searchStatus" class="status" style="margin-left:10px;"></span>
       </div>
+    </div>
+
+    <!-- Browse by set -->
+    <div id="modeBrowse" class="card" style="display:none;">
+      <div class="label">Browse Japanese sets</div>
+      <div class="row center" style="margin-bottom:12px;gap:10px;">
+        <select id="setSelect" class="grow" onchange="onSetChange()">
+          <option value="">Loading sets...</option>
+        </select>
+        <button class="primary" id="browseBtn" onclick="browseSet()" disabled>Browse set →</button>
+      </div>
+      <div id="setMeta" style="font-size:12px;color:var(--text3);"></div>
     </div>
 
     <div id="results"></div>
@@ -759,6 +792,158 @@ function esc(s) {
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 init();
+loadSets();
+
+// ─── Set browser ──────────────────────────────────────────────────────────────
+let allSets = [];
+
+async function loadSets() {
+  try {
+    const res = await fetch(`${BASE}/${CAT}/sets`);
+    if (!res.ok) return;
+    const data = await res.json();
+    // Sort by published_on descending, filter out sets with no products
+    allSets = (data.sets || [])
+      .filter(s => s.product_count > 0 && s.published_on)
+      .sort((a, b) => new Date(b.published_on) - new Date(a.published_on))
+      .slice(0, 20);
+
+    const select = document.getElementById('setSelect');
+    select.innerHTML = '<option value="">— Select a set —</option>';
+    allSets.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = `${s.name} (${s.published_on?.slice(0,7) || ''})`;
+      select.appendChild(opt);
+    });
+    document.getElementById('browseBtn').disabled = false;
+  } catch(e) {
+    document.getElementById('setSelect').innerHTML = '<option value="">Failed to load sets</option>';
+  }
+}
+
+function onSetChange() {
+  const select = document.getElementById('setSelect');
+  const setId = select.value;
+  const set = allSets.find(s => String(s.id) === setId);
+  const meta = document.getElementById('setMeta');
+  if (set) {
+    meta.textContent = `${set.product_count} products · Released ${set.published_on || 'unknown'} · ${set.abbreviation ? set.abbreviation.toUpperCase() : 'No abbreviation'}`;
+  } else {
+    meta.textContent = '';
+  }
+}
+
+async function browseSet() {
+  const select = document.getElementById('setSelect');
+  const setId = select.value;
+  if (!setId) return;
+  const set = allSets.find(s => String(s.id) === setId);
+  if (!set) return;
+
+  document.getElementById('results').innerHTML = '';
+  const btn = document.getElementById('browseBtn');
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+
+  const card = document.createElement('div');
+  card.className = 'result-card';
+  card.innerHTML = `
+    <div class="result-header">
+      <span class="result-query">${esc(set.name)}</span>
+      <span class="result-count status loading">Fetching products...</span>
+    </div>`;
+  document.getElementById('results').appendChild(card);
+
+  try {
+    const [pRes, prRes] = await Promise.all([
+      fetch(`${BASE}/${CAT}/sets/${setId}`),
+      fetch(`${BASE}/${CAT}/sets/${setId}/pricing`)
+    ]);
+    const pData = await pRes.json();
+    const prData = await prRes.json();
+    const products = pData.products || [];
+    const prices = prData.prices || {};
+
+    // Only show products with pricing
+    const matches = [];
+    for (const p of products) {
+      const tcg = prices[p.id]?.tcg || {};
+      for (const [sub, obj] of Object.entries(tcg)) {
+        if (!obj.market) continue;
+        const isSealed = /box|pack|tin|bundle|collection/i.test(p.name);
+        matches.push({ p, set, sub, market: obj.market, low: obj.low, isSealed });
+      }
+    }
+
+    // Sealed first, then by price descending
+    matches.sort((a, b) => {
+      if (a.isSealed !== b.isSealed) return a.isSealed ? -1 : 1;
+      return parseFloat(b.market) - parseFloat(a.market);
+    });
+
+    if (!matches.length) {
+      card.innerHTML = `<div class="result-header"><span class="result-query">${esc(set.name)}</span><span class="status error">No products with pricing found for this set</span></div>`;
+      btn.disabled = false;
+      btn.textContent = 'Browse set →';
+      return;
+    }
+
+    let html = `<div class="result-header">
+      <span class="result-query">${esc(set.name)}</span>
+      <span class="result-count">${matches.length} product(s) with pricing</span>
+    </div>`;
+
+    matches.forEach((m, idx) => {
+      const multiSub = matches.filter(x => x.p.id === m.p.id).length > 1;
+      const uid = `p_${m.p.id}_${idx}_${Date.now()}`;
+      const tcgUrl = m.p.tcgplayer_url || `https://www.tcgplayer.com/product/${m.p.id}`;
+      const ebayUrl = buildEbayUrl(m.p.name);
+      html += `
+        <div class="product-row">
+          <div>
+            <a class="product-name" href="${esc(tcgUrl)}" target="_blank" rel="noopener">
+              ${esc(m.p.name)}
+              ${m.isSealed ? '<span class="badge badge-sealed">sealed</span>' : ''}
+              ${multiSub ? `<span class="badge badge-subtype">${esc(m.sub)}</span>` : ''}
+            </a>
+            <div class="product-set">${esc(set.name)}</div>
+            <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+              <a href="${esc(tcgUrl)}" target="_blank" rel="noopener" class="link-btn tcg-btn">TCGplayer ↗</a>
+              <a href="${esc(ebayUrl)}" target="_blank" rel="noopener" class="link-btn ebay-btn">eBay US listings ↗</a>
+            </div>
+          </div>
+          <div class="price-col">
+            <div class="market">$${parseFloat(m.market).toFixed(2)}</div>
+            ${m.low ? `<div class="low">Low $${parseFloat(m.low).toFixed(2)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:6px;flex-direction:column;align-items:flex-end;">
+            <button onclick="toggleCalc('${uid}')" style="font-size:12px;padding:5px 12px;">Calc profit</button>
+            <button onclick="saveToWatchlist('${esc(m.p.name)}','${esc(set.name)}',${parseFloat(m.market)},${m.low ? parseFloat(m.low) : 0},'${esc(tcgUrl)}','${esc(ebayUrl)}')" style="font-size:12px;padding:5px 12px;">Save</button>
+          </div>
+        </div>
+        <div class="calc-panel" id="${uid}">
+          ${buildCalcHTML(uid, parseFloat(m.market))}
+        </div>`;
+    });
+
+    card.innerHTML = html;
+
+  } catch(e) {
+    card.innerHTML = `<div class="result-header"><span class="result-query">${esc(set.name)}</span><span class="status error">Error: ${e.message}</span></div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Browse set →';
+}
+
+function setMode(mode) {
+  document.getElementById('modeSearch').style.display = mode === 'search' ? 'block' : 'none';
+  document.getElementById('modeBrowse').style.display = mode === 'browse' ? 'block' : 'none';
+  document.getElementById('modeSearchBtn').classList.toggle('active', mode === 'search');
+  document.getElementById('modeBrowseBtn').classList.toggle('active', mode === 'browse');
+  document.getElementById('results').innerHTML = '';
+}
 </script>
 </body>
 </html>
