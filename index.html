@@ -720,16 +720,14 @@ function calcProfit(uid, tcgPrice) {
     </div>`;
 }
 
-// ─── Watchlist ────────────────────────────────────────────────────────────────
-function saveToWatchlist(name, set, market, low, url, ebayUrl) {
-  if (watchlist.find(w => w.name === name)) {
-    alert(`"${name}" is already in your watchlist.`);
-    return;
-  }
-  watchlist.push({ name, set, market, low, url, ebayUrl: ebayUrl || '', saved: new Date().toLocaleDateString() });
-  localStorage.setItem('arb-watchlist', JSON.stringify(watchlist));
-  renderWatchlist();
-  switchTab('watchlist');
+// ─── Debounce helper ──────────────────────────────────────────────────────────
+const debounceTimers = {};
+function debounce(key, fn, delay = 300) {
+  clearTimeout(debounceTimers[key]);
+  debounceTimers[key] = setTimeout(fn, delay);
+}
+function updateWatchlistCalcDebounced(idx) {
+  debounce(`wl_${idx}`, () => updateWatchlistCalc(idx), 300);
 }
 
 // ─── Watchlist ────────────────────────────────────────────────────────────────
@@ -852,22 +850,22 @@ function renderWatchlist() {
         <div>
           <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">eBay price ($)</div>
           <input type="number" id="wl_${i}_ebay" value="${ebayPrice || ''}" placeholder="0.00" step="0.01"
-            oninput="updateWatchlistCalc(${i})" style="font-size:13px;padding:6px 10px;">
+            oninput="updateWatchlistCalcDebounced(${i})" style="font-size:13px;padding:6px 10px;">
         </div>
         <div>
           <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Ship to me ($)</div>
           <input type="number" id="wl_${i}_shipin" value="${shipIn}" step="0.01"
-            oninput="updateWatchlistCalc(${i})" style="font-size:13px;padding:6px 10px;">
+            oninput="updateWatchlistCalcDebounced(${i})" style="font-size:13px;padding:6px 10px;">
         </div>
         <div>
           <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Ship to buyer ($)</div>
           <input type="number" id="wl_${i}_shipout" value="${shipOut}" step="0.01"
-            oninput="updateWatchlistCalc(${i})" style="font-size:13px;padding:6px 10px;">
+            oninput="updateWatchlistCalcDebounced(${i})" style="font-size:13px;padding:6px 10px;">
         </div>
         <div>
           <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Fee (%)</div>
           <input type="number" id="wl_${i}_fee" value="${feeRate}" step="0.1"
-            oninput="updateWatchlistCalc(${i})" style="font-size:13px;padding:6px 10px;">
+            oninput="updateWatchlistCalcDebounced(${i})" style="font-size:13px;padding:6px 10px;">
         </div>
         <button onclick="updateWatchlistCalc(${i})" style="padding:6px 12px;font-size:12px;white-space:nowrap;">Recalc →</button>
       </div>
