@@ -1299,28 +1299,20 @@ function exportFlips() {
   a.download = `pokemon-flips-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
 }
-// ─── Boot ─────────────────────────────────────────────────────────────────────
-init();
-loadSets();
-
 // ─── Set browser ──────────────────────────────────────────────────────────────
 let allSets = [];
 
 async function loadSets() {
   try {
     const res = await fetch(`${BASE}/${CAT}/sets`);
-    if (!res.ok) return;
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-
-    // Main sets have an abbreviation AND the name contains a series code
-    // Filter: must have abbreviation, product_count > 0, and name suggests a main set
-    const MAIN_SET_KEYWORDS = /^(sv|s|m|sm|xy|bw|dp|ex|neo|gym|base|rocket|aqua|magma|team|legend|call|rising|unleashed|undaunted|triumphant|emerging|noble|dark|boundaries|dragon|boundaries|plasma|dragon|xy|primal|ancient|breakthrough|breakpoint|fates|generations|evolutions|steam|burning|shining|forbidden|crimson|ultra|forbidden|lost|unified|cosmic|hidden|unbroken|rebel|sword|chilling|vivid|battle|shining|evolving|fusion|brilliant|astral|lost|silver|scarlet|violet|paldea|obsidian|paradox|temporal|twilight|shrouded|stellar|surging|prismatic|abyss|chaos|inferno|mega|ninja|munikis|perfect|ascended|phantasmal|pitch)/i;
 
     allSets = (data.sets || [])
       .filter(s =>
-        s.abbreviation !== null &&          // Must have an abbreviation = main set
-        s.product_count > 0 &&              // Must have products
-        s.published_on &&                   // Must have a release date
+        s.abbreviation !== null &&
+        s.product_count > 0 &&
+        s.published_on &&
         !s.name.toLowerCase().includes('promo') &&
         !s.name.toLowerCase().includes('promotional') &&
         !s.name.toLowerCase().includes('contest') &&
@@ -1336,22 +1328,26 @@ async function loadSets() {
       .sort((a, b) => new Date(b.published_on) - new Date(a.published_on))
       .slice(0, 30);
 
-    const select = document.getElementById('setSelect');
+    // Populate Browse by set dropdown
+    const setSelect = document.getElementById('setSelect');
     if (!allSets.length) {
-      select.innerHTML = '<option value="">No main sets found</option>';
-      return;
+      setSelect.innerHTML = '<option value="">No main sets found</option>';
+    } else {
+      setSelect.innerHTML = '<option value="">— Select a set —</option>';
+      allSets.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = `${s.name} (${s.published_on?.slice(0,7) || ''})`;
+        setSelect.appendChild(opt);
+      });
+      document.getElementById('browseBtn').disabled = false;
     }
-    select.innerHTML = '<option value="">— Select a set —</option>';
-    allSets.forEach(s => {
-      const opt = document.createElement('option');
-      opt.value = s.id;
-      opt.textContent = `${s.name} (${s.published_on?.slice(0,7) || ''})`;
-      select.appendChild(opt);
-    });
-    document.getElementById('browseBtn').disabled = false;
-    populateFlipDropdown(); // refresh flip dropdown with set names
+
+    // Populate flip log dropdown with same sets
+    populateFlipDropdown();
+
   } catch(e) {
-    document.getElementById('setSelect').innerHTML = '<option value="">Failed to load sets</option>';
+    document.getElementById('setSelect').innerHTML = `<option value="">Failed to load sets: ${e.message}</option>`;
   }
 }
 
@@ -1361,11 +1357,15 @@ function onSetChange() {
   const set = allSets.find(s => String(s.id) === setId);
   const meta = document.getElementById('setMeta');
   if (set) {
-    meta.textContent = `${set.product_count} products · Released ${set.published_on || 'unknown'} · ${set.abbreviation ? set.abbreviation.toUpperCase() : 'No abbreviation'}`;
+    meta.textContent = `${set.product_count} products · Released ${set.published_on || 'unknown'} · ${set.abbreviation ? set.abbreviation.toUpperCase() : ''}`;
   } else {
     meta.textContent = '';
   }
 }
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+init();
+loadSets();
 
 async function browseSet() {
   const select = document.getElementById('setSelect');
