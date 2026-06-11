@@ -327,12 +327,23 @@ async function loadSets() {
     const res = await fetch(`${BASE}/${CAT}/sets`);
     if(!res.ok) throw new Error();
     const data = await res.json();
-    const JP = /^(m\d|sv\d|s\d+a?|sm\d)/i;
+    const JP = /^(m\d[a-z]?|sv\d+[a-z]?|s\d+[a-z]?|sm\d)/i;
     const apiSets = (data.sets||[])
       .filter(s=>s.abbreviation&&s.product_count>0&&JP.test(s.abbreviation))
-      .sort((a,b)=>b.abbreviation.localeCompare(a.abbreviation,undefined,{numeric:true}))
+      .sort((a,b)=>{
+        if(a.published_on&&b.published_on) return new Date(b.published_on)-new Date(a.published_on);
+        return b.abbreviation.localeCompare(a.abbreviation,undefined,{numeric:true});
+      })
       .slice(0,30);
-    allSets = apiSets.length >= 5 ? apiSets : MAIN_JP_SETS;
+
+    if(apiSets.length >= 5) {
+      // Merge: add any hardcoded M sets not already in API results
+      const apiIds = new Set(apiSets.map(s=>s.id));
+      const mSets = MAIN_JP_SETS.filter(s=>s.abbreviation.startsWith('m')&&!apiIds.has(s.id));
+      allSets = [...mSets, ...apiSets].sort((a,b)=>new Date(b.published_on)-new Date(a.published_on)).slice(0,30);
+    } else {
+      allSets = MAIN_JP_SETS;
+    }
   } catch(e) {
     allSets = MAIN_JP_SETS;
   }
