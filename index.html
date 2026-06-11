@@ -313,6 +313,7 @@
   <div class="tabs">
     <button class="tab active" onclick="switchTab('search')">Search</button>
     <button class="tab" onclick="switchTab('watchlist')">Watchlist</button>
+    <button class="tab" onclick="switchTab('flips')">Flip History</button>
     <button class="tab" onclick="switchTab('settings')">Settings</button>
   </div>
 
@@ -399,9 +400,87 @@
     </div>
   </div>
 
-</div>
+  <!-- FLIP HISTORY TAB -->
+  <div id="tab-flips" class="tab-content">
 
-<script>
+    <!-- Summary metrics -->
+    <div class="grid-3" style="margin-bottom:1rem;" id="flipMetrics">
+      <div class="metric">
+        <div class="metric-val" id="fm-total">$0.00</div>
+        <div class="metric-lbl">Total profit</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val" id="fm-flips">0</div>
+        <div class="metric-lbl">Flips logged</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val" id="fm-roi">0%</div>
+        <div class="metric-lbl">Avg ROI</div>
+      </div>
+    </div>
+
+    <!-- Log a flip -->
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="label">Log a flip</div>
+      <div class="grid-2" style="margin-bottom:10px;">
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Product name</div>
+          <input type="text" id="fl-name" placeholder="e.g. Inferno X Booster Box">
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Date purchased</div>
+          <input type="date" id="fl-date">
+        </div>
+      </div>
+      <div class="grid-3" style="margin-bottom:10px;">
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">eBay buy price ($)</div>
+          <input type="number" id="fl-buy" placeholder="0.00" step="0.01" oninput="previewFlip()">
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Ship to me ($)</div>
+          <input type="number" id="fl-shipin" value="0" step="0.01" oninput="previewFlip()">
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">TCGplayer sold price ($)</div>
+          <input type="number" id="fl-sold" placeholder="0.00" step="0.01" oninput="previewFlip()">
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Ship to buyer ($)</div>
+          <input type="number" id="fl-shipout" value="5" step="0.01" oninput="previewFlip()">
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">TCGplayer fee (%)</div>
+          <input type="number" id="fl-fee" value="17.5" step="0.1" oninput="previewFlip()">
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Status</div>
+          <select id="fl-status">
+            <option value="sold">Sold ✅</option>
+            <option value="listed">Listed 📋</option>
+            <option value="pending">Pending ⏳</option>
+          </select>
+        </div>
+      </div>
+      <div id="fl-preview" style="margin-bottom:10px;"></div>
+      <div class="row center">
+        <button class="primary" onclick="logFlip()">Log flip →</button>
+        <span id="fl-status-msg" class="status" style="margin-left:10px;"></span>
+      </div>
+    </div>
+
+    <!-- Flip log -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div class="label" style="margin:0;">Flip log</div>
+        <button onclick="exportFlips()" style="font-size:12px;padding:5px 12px;">Export CSV</button>
+      </div>
+      <div id="flipLog"><div class="empty">No flips logged yet.</div></div>
+    </div>
+
+  </div>
+
+</div>
 // ─── Config ───────────────────────────────────────────────────────────────────
 const BASE = 'https://tcgtracking.com/tcgapi/v1';
 const CAT = 85; // Pokemon Japan
@@ -414,6 +493,7 @@ let settings = {
   ebayKey: ''
 };
 let watchlist = [];
+let flips = [];
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 function init() {
@@ -422,12 +502,19 @@ function init() {
     if (s) settings = { ...settings, ...JSON.parse(s) };
     const w = localStorage.getItem('arb-watchlist');
     if (w) watchlist = JSON.parse(w);
+    const f = localStorage.getItem('arb-flips');
+    if (f) flips = JSON.parse(f);
   } catch(e) {}
   document.getElementById('cfg-tcgfee').value = settings.tcgFee;
   document.getElementById('cfg-procfee').value = settings.procFee;
   document.getElementById('cfg-shipout').value = settings.shipOut;
   document.getElementById('cfg-shipin').value = settings.shipIn;
   document.getElementById('cfg-ebaykey').value = settings.ebayKey || '';
+  // Set default date to today
+  document.getElementById('fl-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('fl-fee').value = settings.tcgFee + settings.procFee;
+  document.getElementById('fl-shipout').value = settings.shipOut;
+  document.getElementById('fl-shipin').value = settings.shipIn;
   updateTotalFee();
   renderWatchlist();
 }
@@ -449,12 +536,13 @@ function updateTotalFee() {
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 function switchTab(name) {
+  const tabs = ['search','watchlist','flips','settings'];
   document.querySelectorAll('.tab').forEach((t, i) => {
-    const tabs = ['search','watchlist','settings'];
     t.classList.toggle('active', tabs[i] === name);
   });
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'flips') renderFlipLog();
 }
 
 // ─── Search ───────────────────────────────────────────────────────────────────
@@ -912,6 +1000,178 @@ function esc(s) {
     .replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;')
     .replace(/'/g,'&#39;');
+}
+
+// ─── Flip History ─────────────────────────────────────────────────────────────
+function previewFlip() {
+  const buy = parseFloat(document.getElementById('fl-buy').value) || 0;
+  const sold = parseFloat(document.getElementById('fl-sold').value) || 0;
+  const shipIn = parseFloat(document.getElementById('fl-shipin').value) || 0;
+  const shipOut = parseFloat(document.getElementById('fl-shipout').value) || 0;
+  const feeRate = parseFloat(document.getElementById('fl-fee').value) || 17.5;
+  const el = document.getElementById('fl-preview');
+  if (!buy && !sold) { el.innerHTML = ''; return; }
+  const fee = sold * (feeRate / 100);
+  const totalCost = buy + shipIn;
+  const revenue = sold - fee - shipOut;
+  const profit = revenue - buy - shipIn;
+  const roi = totalCost > 0 ? (profit / totalCost * 100) : 0;
+  const cls = profit > 0 ? 'pos' : profit < 0 ? 'neg' : 'neutral';
+  const sign = profit >= 0 ? '+' : '';
+  el.innerHTML = `
+    <div class="profit-bar ${cls}">
+      <div class="profit-main ${cls}">${sign}$${Math.abs(profit).toFixed(2)} profit</div>
+      <div class="profit-breakdown" style="margin-top:4px;">
+        <div class="pb-item">Sold for <span>$${sold.toFixed(2)}</span></div>
+        <div class="pb-item">Fee (${feeRate}%) <span>-$${fee.toFixed(2)}</span></div>
+        <div class="pb-item">Ship out <span>-$${shipOut.toFixed(2)}</span></div>
+        <div class="pb-item">Buy cost <span>-$${buy.toFixed(2)}</span></div>
+        <div class="pb-item">Ship in <span>-$${shipIn.toFixed(2)}</span></div>
+        <div class="pb-item">ROI <span style="color:${roi>0?'var(--green)':roi<0?'var(--red)':'var(--text3)'};">${roi.toFixed(1)}%</span></div>
+      </div>
+    </div>`;
+}
+
+function logFlip() {
+  const name = document.getElementById('fl-name').value.trim();
+  const date = document.getElementById('fl-date').value;
+  const buy = parseFloat(document.getElementById('fl-buy').value) || 0;
+  const sold = parseFloat(document.getElementById('fl-sold').value) || 0;
+  const shipIn = parseFloat(document.getElementById('fl-shipin').value) || 0;
+  const shipOut = parseFloat(document.getElementById('fl-shipout').value) || 0;
+  const feeRate = parseFloat(document.getElementById('fl-fee').value) || 17.5;
+  const status = document.getElementById('fl-status').value;
+  const msgEl = document.getElementById('fl-status-msg');
+
+  if (!name) { msgEl.textContent = 'Enter a product name.'; msgEl.className = 'status error'; return; }
+  if (!buy) { msgEl.textContent = 'Enter the eBay buy price.'; msgEl.className = 'status error'; return; }
+
+  const fee = sold * (feeRate / 100);
+  const profit = sold > 0 ? (sold - fee - shipOut - buy - shipIn) : null;
+  const roi = profit !== null && (buy + shipIn) > 0 ? (profit / (buy + shipIn) * 100) : null;
+
+  flips.unshift({ id: Date.now(), name, date, buy, sold, shipIn, shipOut, feeRate, fee, profit, roi, status });
+  localStorage.setItem('arb-flips', JSON.stringify(flips));
+
+  // Reset form
+  document.getElementById('fl-name').value = '';
+  document.getElementById('fl-buy').value = '';
+  document.getElementById('fl-sold').value = '';
+  document.getElementById('fl-preview').innerHTML = '';
+  document.getElementById('fl-date').value = new Date().toISOString().slice(0,10);
+  msgEl.textContent = '✓ Flip logged!';
+  msgEl.className = 'status';
+  setTimeout(() => { msgEl.textContent = ''; }, 2000);
+
+  renderFlipLog();
+  updateFlipMetrics();
+}
+
+function deleteFlip(id) {
+  flips = flips.filter(f => f.id !== id);
+  localStorage.setItem('arb-flips', JSON.stringify(flips));
+  renderFlipLog();
+  updateFlipMetrics();
+}
+
+function updateFlipStatus(id, status) {
+  const flip = flips.find(f => f.id === id);
+  if (flip) {
+    flip.status = status;
+    localStorage.setItem('arb-flips', JSON.stringify(flips));
+  }
+}
+
+function updateFlipMetrics() {
+  const soldFlips = flips.filter(f => f.profit !== null);
+  const totalProfit = soldFlips.reduce((sum, f) => sum + f.profit, 0);
+  const avgRoi = soldFlips.length > 0
+    ? soldFlips.reduce((sum, f) => sum + (f.roi || 0), 0) / soldFlips.length
+    : 0;
+  const profitEl = document.getElementById('fm-total');
+  profitEl.textContent = (totalProfit >= 0 ? '+' : '') + '$' + Math.abs(totalProfit).toFixed(2);
+  profitEl.style.color = totalProfit > 0 ? 'var(--green)' : totalProfit < 0 ? 'var(--red)' : 'var(--text3)';
+  document.getElementById('fm-flips').textContent = flips.length;
+  const roiEl = document.getElementById('fm-roi');
+  roiEl.textContent = avgRoi.toFixed(1) + '%';
+  roiEl.style.color = avgRoi > 0 ? 'var(--green)' : avgRoi < 0 ? 'var(--red)' : 'var(--text3)';
+}
+
+function renderFlipLog() {
+  updateFlipMetrics();
+  const el = document.getElementById('flipLog');
+  if (!flips.length) { el.innerHTML = '<div class="empty">No flips logged yet.</div>'; return; }
+
+  const statusIcon = { sold: '✅', listed: '📋', pending: '⏳' };
+  const statusColor = { sold: 'var(--green)', listed: 'var(--yellow)', pending: 'var(--text3)' };
+
+  let html = '';
+  flips.forEach(f => {
+    const profit = f.profit;
+    const roi = f.roi;
+    const cls = profit !== null ? (profit > 0 ? 'pos' : profit < 0 ? 'neg' : 'neutral') : 'neutral';
+    const sign = profit !== null && profit >= 0 ? '+' : '';
+    html += `
+    <div style="border-bottom:0.5px solid var(--border);padding:14px 0;">
+      <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:start;">
+        <div>
+          <div style="font-size:14px;font-weight:500;color:var(--text);">${esc(f.name)}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${f.date || '—'}</div>
+          <div style="margin-top:6px;">
+            <select onchange="updateFlipStatus(${f.id}, this.value)"
+              style="font-size:12px;padding:3px 8px;background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--radius-sm);color:${statusColor[f.status]||'var(--text3)'};">
+              <option value="sold" ${f.status==='sold'?'selected':''}>✅ Sold</option>
+              <option value="listed" ${f.status==='listed'?'selected':''}>📋 Listed</option>
+              <option value="pending" ${f.status==='pending'?'selected':''}>⏳ Pending</option>
+            </select>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:12px;color:var(--text3);">Bought</div>
+          <div style="font-size:15px;font-weight:600;">$${parseFloat(f.buy).toFixed(2)}</div>
+          ${f.sold ? `<div style="font-size:12px;color:var(--text3);">Sold $${parseFloat(f.sold).toFixed(2)}</div>` : '<div style="font-size:12px;color:var(--text3);">Not sold yet</div>'}
+        </div>
+        ${profit !== null ? `
+        <div style="text-align:right;">
+          <div style="font-size:12px;color:var(--text3);">Profit</div>
+          <div style="font-size:15px;font-weight:600;color:${profit>0?'var(--green)':profit<0?'var(--red)':'var(--text3)'};">${sign}$${Math.abs(profit).toFixed(2)}</div>
+          ${roi !== null ? `<div style="font-size:12px;color:${roi>0?'var(--green)':roi<0?'var(--red)':'var(--text3)'};">${roi.toFixed(1)}% ROI</div>` : ''}
+        </div>` : '<div></div>'}
+        <div>
+          <button class="del-btn" onclick="deleteFlip(${f.id})">Delete</button>
+        </div>
+      </div>
+      ${profit !== null ? `
+      <div class="profit-bar ${cls}" style="margin-top:10px;">
+        <div class="profit-breakdown">
+          <div class="pb-item">Sold <span>$${parseFloat(f.sold).toFixed(2)}</span></div>
+          <div class="pb-item">Fee (${f.feeRate}%) <span>-$${parseFloat(f.fee).toFixed(2)}</span></div>
+          <div class="pb-item">Ship out <span>-$${parseFloat(f.shipOut).toFixed(2)}</span></div>
+          <div class="pb-item">Buy cost <span>-$${parseFloat(f.buy).toFixed(2)}</span></div>
+          <div class="pb-item">Ship in <span>-$${parseFloat(f.shipIn).toFixed(2)}</span></div>
+        </div>
+      </div>` : ''}
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function exportFlips() {
+  if (!flips.length) return;
+  const headers = ['Product','Date','Buy Price','Ship In','Sold Price','Ship Out','Fee %','Fee $','Profit','ROI %','Status'];
+  const rows = flips.map(f => [
+    `"${f.name}"`, f.date, f.buy, f.shipIn, f.sold || '',
+    f.shipOut, f.feeRate, f.fee ? f.fee.toFixed(2) : '',
+    f.profit !== null ? f.profit.toFixed(2) : '',
+    f.roi !== null ? f.roi.toFixed(1) : '',
+    f.status
+  ]);
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `pokemon-flips-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
