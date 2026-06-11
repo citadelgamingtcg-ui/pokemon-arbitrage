@@ -616,7 +616,7 @@ async function searchOne(query) {
           </div>
           <div style="display:flex;gap:6px;flex-direction:column;align-items:flex-end;">
             <button onclick="toggleCalc('${uid}')" style="font-size:12px;padding:5px 12px;">Calc profit</button>
-            <button onclick="saveToWatchlist('${esc(m.p.name)}','${esc(m.set.name)}',${parseFloat(m.market)},${m.low ? parseFloat(m.low) : 0},'${esc(tcgUrl)}','${esc(ebayUrl)}')" style="font-size:12px;padding:5px 12px;">Save</button>
+            <button onclick="saveToWatchlist('${esc(m.p.name)}','${esc(m.set.name)}',${parseFloat(m.market)},${m.low ? parseFloat(m.low) : 0},'${esc(tcgUrl)}','${esc(ebayUrl)}','${uid}')" style="font-size:12px;padding:5px 12px;">Save</button>
           </div>
         </div>
         <div class="calc-panel" id="${uid}">
@@ -732,6 +732,67 @@ function saveToWatchlist(name, set, market, low, url, ebayUrl) {
   switchTab('watchlist');
 }
 
+// ─── Watchlist ────────────────────────────────────────────────────────────────
+function saveToWatchlist(name, set, market, low, url, ebayUrl, uid) {
+  if (watchlist.find(w => w.name === name)) {
+    alert(`"${name}" is already in your watchlist.`);
+    return;
+  }
+  // Capture calc inputs if they exist
+  const ebayPrice = parseFloat(document.getElementById(uid + '_ebay')?.value) || 0;
+  const shipIn = parseFloat(document.getElementById(uid + '_shipin')?.value) || settings.shipIn;
+  const shipOut = parseFloat(document.getElementById(uid + '_shipout')?.value) || settings.shipOut;
+  const feeRate = parseFloat(document.getElementById(uid + '_fee')?.value) || (settings.tcgFee + settings.procFee);
+  const fee = market * (feeRate / 100);
+  const profit = ebayPrice ? (market - fee - shipOut - ebayPrice - shipIn) : null;
+
+  watchlist.push({
+    name, set, market, low, url,
+    ebayUrl: ebayUrl || '',
+    saved: new Date().toLocaleDateString(),
+    ebayPrice: ebayPrice || null,
+    shipIn, shipOut, feeRate,
+    profit
+  });
+  localStorage.setItem('arb-watchlist', JSON.stringify(watchlist));
+  renderWatchlist();
+  switchTab('watchlist');
+}
+
+function updateWatchlistCalc(idx) {
+  const w = watchlist[idx];
+  const ebay = parseFloat(document.getElementById(`wl_${idx}_ebay`)?.value) || 0;
+  const shipIn = parseFloat(document.getElementById(`wl_${idx}_shipin`)?.value) || 0;
+  const shipOut = parseFloat(document.getElementById(`wl_${idx}_shipout`)?.value) || 0;
+  const feeRate = parseFloat(document.getElementById(`wl_${idx}_fee`)?.value) || 17.5;
+  const market = parseFloat(w.market);
+  const fee = market * (feeRate / 100);
+  const profit = market - fee - shipOut - ebay - shipIn;
+  const roi = (ebay + shipIn) > 0 ? (profit / (ebay + shipIn) * 100) : 0;
+  const cls = profit > 0 ? 'pos' : profit < 0 ? 'neg' : 'neutral';
+  const sign = profit >= 0 ? '+' : '';
+  const el = document.getElementById(`wl_${idx}_result`);
+  if (!el) return;
+  if (!ebay) { el.innerHTML = `<span style="color:var(--text3);font-size:13px;">Enter eBay price to calculate profit</span>`; return; }
+  el.innerHTML = `
+    <div class="profit-bar ${cls}" style="margin-top:10px;">
+      <div>
+        <div class="profit-main ${cls}">${sign}$${Math.abs(profit).toFixed(2)} profit</div>
+        <div class="profit-breakdown" style="margin-top:4px;">
+          <div class="pb-item">TCGplayer <span>$${market.toFixed(2)}</span></div>
+          <div class="pb-item">Fee (${feeRate}%) <span>-$${fee.toFixed(2)}</span></div>
+          <div class="pb-item">Ship out <span>-$${shipOut.toFixed(2)}</span></div>
+          <div class="pb-item">eBay cost <span>-$${ebay.toFixed(2)}</span></div>
+          <div class="pb-item">Ship in <span>-$${shipIn.toFixed(2)}</span></div>
+          <div class="pb-item">ROI <span style="color:${roi>0?'var(--green)':roi<0?'var(--red)':'var(--text3)'};">${roi.toFixed(1)}%</span></div>
+        </div>
+      </div>
+    </div>`;
+  // Save updated values
+  watchlist[idx] = { ...w, ebayPrice: ebay, shipIn, shipOut, feeRate, profit };
+  localStorage.setItem('arb-watchlist', JSON.stringify(watchlist));
+}
+
 function removeFromWatchlist(idx) {
   watchlist.splice(idx, 1);
   localStorage.setItem('arb-watchlist', JSON.stringify(watchlist));
@@ -744,25 +805,90 @@ function renderWatchlist() {
     el.innerHTML = '<div class="empty">No products saved yet. Search for a product and click "Save".</div>';
     return;
   }
-  let html = `<table class="wl-table">
-    <thead><tr>
-      <th>Product</th><th>Set</th><th>Market</th><th>Low</th><th>Links</th><th>Saved</th><th></th>
-    </tr></thead><tbody>`;
+
+  let html = '';
   watchlist.forEach((w, i) => {
-    html += `<tr>
-      <td><a href="${esc(w.url)}" target="_blank" style="color:var(--text);text-decoration:none;">${esc(w.name)}</a></td>
-      <td style="color:var(--text3);">${esc(w.set)}</td>
-      <td style="font-weight:600;">$${parseFloat(w.market).toFixed(2)}</td>
-      <td style="color:var(--text3);">${w.low ? '$'+parseFloat(w.low).toFixed(2) : '—'}</td>
-      <td>
-        <a href="${esc(w.url)}" target="_blank" class="link-btn tcg-btn" style="margin-right:4px;">TCG ↗</a>
-        ${w.ebayUrl ? `<a href="${esc(w.ebayUrl)}" target="_blank" class="link-btn ebay-btn">eBay ↗</a>` : ''}
-      </td>
-      <td style="color:var(--text3);">${esc(w.saved)}</td>
-      <td><button class="del-btn" onclick="removeFromWatchlist(${i})">Remove</button></td>
-    </tr>`;
+    const market = parseFloat(w.market);
+    const ebayPrice = w.ebayPrice || 0;
+    const shipIn = w.shipIn ?? settings.shipIn;
+    const shipOut = w.shipOut ?? settings.shipOut;
+    const feeRate = w.feeRate ?? (settings.tcgFee + settings.procFee);
+    const fee = market * (feeRate / 100);
+    const profit = ebayPrice ? (market - fee - shipOut - ebayPrice - shipIn) : null;
+    const roi = ebayPrice && (ebayPrice + shipIn) > 0 ? (profit / (ebayPrice + shipIn) * 100) : null;
+    const cls = profit !== null ? (profit > 0 ? 'pos' : profit < 0 ? 'neg' : 'neutral') : 'neutral';
+    const sign = profit >= 0 ? '+' : '';
+
+    html += `
+    <div style="border-bottom: 0.5px solid var(--border); padding: 14px 0;" id="wl_item_${i}">
+      <!-- Top row: name + price + links + remove -->
+      <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:start;">
+        <div>
+          <a href="${esc(w.url)}" target="_blank" style="color:var(--text);text-decoration:none;font-size:14px;font-weight:500;">${esc(w.name)}</a>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${esc(w.set)} · Saved ${esc(w.saved)}</div>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <a href="${esc(w.url)}" target="_blank" class="link-btn tcg-btn">TCG ↗</a>
+            ${w.ebayUrl ? `<a href="${esc(w.ebayUrl)}" target="_blank" class="link-btn ebay-btn">eBay ↗</a>` : ''}
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:15px;font-weight:600;">$${market.toFixed(2)}</div>
+          <div style="font-size:12px;color:var(--text3);">market</div>
+          ${w.low ? `<div style="font-size:12px;color:var(--text3);">Low $${parseFloat(w.low).toFixed(2)}</div>` : ''}
+        </div>
+        ${profit !== null ? `
+        <div style="text-align:right;">
+          <div style="font-size:15px;font-weight:600;color:${profit>0?'var(--green)':profit<0?'var(--red)':'var(--text3)'};">${sign}$${Math.abs(profit).toFixed(2)}</div>
+          <div style="font-size:12px;color:var(--text3);">profit</div>
+          ${roi !== null ? `<div style="font-size:12px;color:${roi>0?'var(--green)':roi<0?'var(--red)':'var(--text3)'};">${roi.toFixed(1)}% ROI</div>` : ''}
+        </div>` : '<div></div>'}
+        <div>
+          <button class="del-btn" onclick="removeFromWatchlist(${i})">Remove</button>
+        </div>
+      </div>
+
+      <!-- Calc row -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr) auto;gap:8px;margin-top:12px;align-items:flex-end;">
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">eBay price ($)</div>
+          <input type="number" id="wl_${i}_ebay" value="${ebayPrice || ''}" placeholder="0.00" step="0.01"
+            oninput="updateWatchlistCalc(${i})" style="font-size:13px;padding:6px 10px;">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Ship to me ($)</div>
+          <input type="number" id="wl_${i}_shipin" value="${shipIn}" step="0.01"
+            oninput="updateWatchlistCalc(${i})" style="font-size:13px;padding:6px 10px;">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Ship to buyer ($)</div>
+          <input type="number" id="wl_${i}_shipout" value="${shipOut}" step="0.01"
+            oninput="updateWatchlistCalc(${i})" style="font-size:13px;padding:6px 10px;">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Fee (%)</div>
+          <input type="number" id="wl_${i}_fee" value="${feeRate}" step="0.1"
+            oninput="updateWatchlistCalc(${i})" style="font-size:13px;padding:6px 10px;">
+        </div>
+        <button onclick="updateWatchlistCalc(${i})" style="padding:6px 12px;font-size:12px;white-space:nowrap;">Recalc →</button>
+      </div>
+      <div id="wl_${i}_result" style="margin-top:8px;">
+        ${profit !== null ? `
+        <div class="profit-bar ${cls}">
+          <div>
+            <div class="profit-main ${cls}">${sign}$${Math.abs(profit).toFixed(2)} profit</div>
+            <div class="profit-breakdown" style="margin-top:4px;">
+              <div class="pb-item">TCGplayer <span>$${market.toFixed(2)}</span></div>
+              <div class="pb-item">Fee (${feeRate}%) <span>-$${fee.toFixed(2)}</span></div>
+              <div class="pb-item">Ship out <span>-$${shipOut.toFixed(2)}</span></div>
+              <div class="pb-item">eBay cost <span>-$${ebayPrice.toFixed(2)}</span></div>
+              <div class="pb-item">Ship in <span>-$${shipIn.toFixed(2)}</span></div>
+            </div>
+          </div>
+        </div>` : `<span style="color:var(--text3);font-size:13px;">Enter eBay price to calculate profit</span>`}
+      </div>
+    </div>`;
   });
-  html += '</tbody></table>';
+
   el.innerHTML = html;
 }
 
@@ -942,7 +1068,7 @@ async function browseSet() {
           </div>
           <div style="display:flex;gap:6px;flex-direction:column;align-items:flex-end;">
             <button onclick="toggleCalc('${uid}')" style="font-size:12px;padding:5px 12px;">Calc profit</button>
-            <button onclick="saveToWatchlist('${esc(m.p.name)}','${esc(set.name)}',${parseFloat(m.market)},${m.low ? parseFloat(m.low) : 0},'${esc(tcgUrl)}','${esc(ebayUrl)}')" style="font-size:12px;padding:5px 12px;">Save</button>
+            <button onclick="saveToWatchlist('${esc(m.p.name)}','${esc(set.name)}',${parseFloat(m.market)},${m.low ? parseFloat(m.low) : 0},'${esc(tcgUrl)}','${esc(ebayUrl)}','${uid}')" style="font-size:12px;padding:5px 12px;">Save</button>
           </div>
         </div>
         <div class="calc-panel" id="${uid}">
