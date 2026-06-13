@@ -1132,6 +1132,21 @@ function exportFlips(){
 // ─── PSA Flip Calculator ──────────────────────────────────────────────────────
 let psaLog = [];
 
+function fillCalc(name, tcg, p10, p9, p8) {
+  document.getElementById('psa-name').value = name;
+  if (p10) document.getElementById('psa-p10').value = p10.toFixed(2);
+  if (p9) document.getElementById('psa-p9').value = p9.toFixed(2);
+  if (p8) document.getElementById('psa-p8').value = p8.toFixed(2);
+  // Only fill raw price if TCG price exists and is meaningful
+  if (tcg && tcg > 0) {
+    document.getElementById('psa-raw').value = tcg.toFixed(2);
+  } else {
+    document.getElementById('psa-raw').value = '';
+  }
+  document.querySelector('#tab-psa .card:nth-child(2)').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  calcPSA();
+}
+
 async function searchPSAPrices() {
   const query = document.getElementById('psa-search').value.trim();
   const key = settings.rapidKey;
@@ -1146,11 +1161,11 @@ async function searchPSAPrices() {
 
   btn.disabled = true;
   btn.textContent = 'Searching...';
-  el.innerHTML = `<div class="status loading">Fetching prices from pokemon-api.com...</div>`;
+  el.innerHTML = `<div class="status loading">Fetching prices...</div>`;
 
   try {
     const res = await fetch(
-      `https://pokemon-tcg-api.p.rapidapi.com/cards?search=${encodeURIComponent(query)}&sort=price_highest&limit=8`,
+      `https://pokemon-tcg-api.p.rapidapi.com/cards?search=${encodeURIComponent(query)}&limit=20`,
       {
         headers: {
           'Content-Type': 'application/json',
@@ -1161,16 +1176,30 @@ async function searchPSAPrices() {
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    const cards = data.data || data.cards || data.results || (Array.isArray(data) ? data : []);
+    let cards = data.data || data.cards || data.results || (Array.isArray(data) ? data : []);
 
     if (!cards.length) {
-      el.innerHTML = `<div class="status error">No cards found. Try a shorter search term.</div>`;
+      el.innerHTML = `<div class="status error">No cards found. Try a shorter or different search term.</div>`;
       btn.disabled = false; btn.textContent = 'Search prices →';
       return;
     }
 
+    // Sort by relevance — exact/starts-with matches first, then has PSA data, then by price
+    const qLower = query.toLowerCase();
+    cards = cards.sort((a, b) => {
+      const aName = (a.name || '').toLowerCase();
+      const bName = (b.name || '').toLowerCase();
+      const aExact = aName === qLower ? 0 : aName.startsWith(qLower) ? 1 : aName.includes(qLower) ? 2 : 3;
+      const bExact = bName === qLower ? 0 : bName.startsWith(qLower) ? 1 : bName.includes(qLower) ? 2 : 3;
+      if (aExact !== bExact) return aExact - bExact;
+      // Prefer cards with PSA data
+      const aPSA = a.prices?.ebay?.graded?.psa?.['10']?.median_price ? 0 : 1;
+      const bPSA = b.prices?.ebay?.graded?.psa?.['10']?.median_price ? 0 : 1;
+      return aPSA - bPSA;
+    });
+
     let html = `<div style="margin-top:8px;">`;
-    cards.forEach(c => {
+    cards.slice(0, 10).forEach(c => {
       const tcg = c.prices?.tcg_player?.market_price || c.prices?.tcgplayer?.market_price || null;
       const psa10 = c.prices?.ebay?.graded?.psa?.['10']?.median_price || null;
       const psa9 = c.prices?.ebay?.graded?.psa?.['9']?.median_price || null;
@@ -1180,16 +1209,16 @@ async function searchPSAPrices() {
 
       html += `<div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border);">
         <div>
-          <div style="font-size:14px;font-weight:500;">${esc(c.name||'')}</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${esc(set)} ${c.card_number?'· #'+c.card_number:''}</div>
+          <div style="font-size:14px;font-weight:500;">${esc(c.name||'')} ${c.card_number?`<span style="font-size:12px;color:var(--text3);">#${c.card_number}</span>`:''}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${esc(set)}</div>
           <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin-top:4px;">
-            ${tcg?`<span style="color:var(--text2);">TCG: <strong>$${parseFloat(tcg).toFixed(2)}</strong></span>`:''}
+            ${tcg?`<span style="color:var(--text2);">TCG raw: <strong>$${parseFloat(tcg).toFixed(2)}</strong></span>`:`<span style="color:var(--text3);">TCG: no data — enter raw price manually</span>`}
             ${psa10?`<span style="color:var(--green);">PSA 10: <strong>$${parseFloat(psa10).toFixed(2)}</strong></span>`:'<span style="color:var(--text3);">PSA 10: no data</span>'}
             ${psa9?`<span style="color:var(--yellow);">PSA 9: <strong>$${parseFloat(psa9).toFixed(2)}</strong></span>`:''}
             ${psa8?`<span style="color:var(--text3);">PSA 8: <strong>$${parseFloat(psa8).toFixed(2)}</strong></span>`:''}
           </div>
         </div>
-        ${hasGraded?`<button onclick="fillCalc('${esc(c.name||'')}',${tcg||0},${psa10||0},${psa9||0},${psa8||0})" style="font-size:12px;padding:5px 12px;white-space:nowrap;">Use →</button>`:'<div style="font-size:11px;color:var(--text3);">No PSA data</div>'}
+        <button onclick="fillCalc('${esc(c.name||'')}',${tcg||0},${psa10||0},${psa9||0},${psa8||0})" style="font-size:12px;padding:5px 12px;white-space:nowrap;">${hasGraded?'Use →':'Use (manual)'}</button>
       </div>`;
     });
     html += `</div>`;
@@ -1199,17 +1228,6 @@ async function searchPSAPrices() {
     el.innerHTML = `<div class="status error">Error: ${e.message}. Check your RapidAPI key in Settings.</div>`;
   }
   btn.disabled = false; btn.textContent = 'Search prices →';
-}
-
-function fillCalc(name, tcg, p10, p9, p8) {
-  document.getElementById('psa-name').value = name;
-  if (p10) document.getElementById('psa-p10').value = p10.toFixed(2);
-  if (p9) document.getElementById('psa-p9').value = p9.toFixed(2);
-  if (p8) document.getElementById('psa-p8').value = p8.toFixed(2);
-  if (tcg) document.getElementById('psa-raw').value = tcg.toFixed(2);
-  // Scroll to calc
-  document.getElementById('psa-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  calcPSA();
 }
 
 function updateGradingCost() {
