@@ -1206,24 +1206,9 @@ async function searchPSAPrices() {
       // TCGplayer price fetched separately via TCGTracking API using product ID
       const cmEur = c.prices?.cardmarket?.['30d_average'] || c.prices?.cardmarket?.lowest_near_mint || null;
       const EUR_TO_USD = 1.08;
-      const cmUsd = cmEur ? parseFloat((cmEur * EUR_TO_USD).toFixed(2)) : null;
-      // Try to get TCGplayer price from TCGTracking using product ID
+      const tcg = cmEur ? parseFloat((cmEur * EUR_TO_USD).toFixed(2)) : null;
+      const tcgLabel = tcg ? 'CM avg (EUR→USD)' : null;
       const productId = c.id || null;
-      let tcg = cmUsd; // fallback to CM price
-      let tcgLabel = cmUsd ? 'CM avg (EUR→USD)' : null;
-      if (productId) {
-        try {
-          const cat = c._lang === 'JP' ? 85 : 3;
-          const tcgRes = await fetch(\`https://tcgtracking.com/tcgapi/v1/products/\${productId}\`);
-          if (tcgRes.ok) {
-            const tcgData = await tcgRes.json();
-            const tcgPrices = tcgData.prices?.tcg || {};
-            const subtypes = Object.values(tcgPrices);
-            const market = subtypes.find(s => s.market)?.market || null;
-            if (market) { tcg = parseFloat(market); tcgLabel = 'TCGplayer market'; }
-          }
-        } catch(e) {}
-      }
       const psa10 = c.prices?.ebay?.graded?.psa?.['10']?.median_price || null;
       const psa9 = c.prices?.ebay?.graded?.psa?.['9']?.median_price || null;
       const psa8 = c.prices?.ebay?.graded?.psa?.['8']?.median_price || null;
