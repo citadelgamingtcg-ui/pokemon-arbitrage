@@ -1166,15 +1166,20 @@ function cleanPSAQuery(raw) {
     .trim();
 }
 
-function fillCalc(name, tcg, p10, p9, p8) {
+function fillCalc(name, tcg, p10, p9, p8, specificName, lang) {
   document.getElementById('psa-name').value = name;
   document.getElementById('psa-p10').value = (p10 && p10 > 0) ? parseFloat(p10).toFixed(2) : '';
   document.getElementById('psa-p9').value = (p9 && p9 > 0) ? parseFloat(p9).toFixed(2) : '';
   document.getElementById('psa-p8').value = (p8 && p8 > 0) ? parseFloat(p8).toFixed(2) : '';
   document.getElementById('psa-raw').value = (tcg && parseFloat(tcg) > 0) ? parseFloat(tcg).toFixed(2) : '';
-  // Auto-populate eBay lookup box and update links
-  document.getElementById('psa-search-name').value = name;
-  updateEbayLinks();
+  // Update eBay links with specific card name + number and correct language
+  const ebayName = specificName || name;
+  document.getElementById('psa-search-name').value = ebayName;
+  // Temporarily set psaLang for eBay links if lang provided
+  const prevLang = psaLang;
+  if (lang) psaLang = lang.toLowerCase();
+  updateEbayLinks(ebayName);
+  psaLang = prevLang;
   const calcCard = document.getElementById('psa-calc-card');
   if (calcCard) calcCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
   calcPSA();
@@ -1294,6 +1299,8 @@ async function searchPSAPrices() {
         </div>
         <button class="psa-use-btn"
           data-name="${esc(c.name||'')}"
+          data-num="${esc(c.card_number||'')}"
+          data-set="${esc(set)}"
           data-tcg="${tcg||''}"
           data-p10="${psa10||''}"
           data-p9="${psa9||''}"
@@ -1408,17 +1415,20 @@ function calcPSA() {
   </div>`;
 }
 
-function updateEbayLinks() {
-  const name = document.getElementById('psa-search-name').value.trim()
+function updateEbayLinks(specificName) {
+  const name = specificName
+    || document.getElementById('psa-search-name').value.trim()
     || document.getElementById('psa-search').value.trim()
     || document.getElementById('psa-name').value.trim();
   if (!name) return false;
   document.getElementById('psa-search-name').value = name;
+  const isJP = psaLang === 'jp';
+  const langTag = isJP ? 'Japanese' : '';
   const base = `https://www.ebay.com/sch/i.html?LH_Sold=1&LH_Complete=1&_sop=13&_nkw=`;
-  document.getElementById('ebay-sold-10').href = base + encodeURIComponent(`${name} PSA 10 Pokemon Japanese`);
-  document.getElementById('ebay-sold-9').href = base + encodeURIComponent(`${name} PSA 9 Pokemon Japanese`);
-  document.getElementById('ebay-sold-8').href = base + encodeURIComponent(`${name} PSA 8 Pokemon Japanese`);
-  return true; // allow the link to navigate
+  document.getElementById('ebay-sold-10').href = base + encodeURIComponent(`${name} PSA 10 Pokemon${langTag ? ' '+langTag : ''}`);
+  document.getElementById('ebay-sold-9').href = base + encodeURIComponent(`${name} PSA 9 Pokemon${langTag ? ' '+langTag : ''}`);
+  document.getElementById('ebay-sold-8').href = base + encodeURIComponent(`${name} PSA 8 Pokemon${langTag ? ' '+langTag : ''}`);
+  return true;
 }
 
 function logPSAFlip() {
@@ -1744,11 +1754,12 @@ document.addEventListener('click', async function(e) {
   if (e.target.classList.contains('psa-use-btn')) {
     const btn = e.target;
     const name = btn.dataset.name || '';
+    const num = btn.dataset.num || '';
+    const lang = btn.dataset.lang || 'EN';
     const p10 = parseFloat(btn.dataset.p10) || 0;
     const p9 = parseFloat(btn.dataset.p9) || 0;
     const p8 = parseFloat(btn.dataset.p8) || 0;
     const pid = btn.dataset.pid || '';
-    const lang = btn.dataset.lang || 'EN';
     let tcg = parseFloat(btn.dataset.tcg) || 0;
 
     btn.textContent = 'Loading...';
@@ -1762,19 +1773,18 @@ document.addEventListener('click', async function(e) {
           const data = await res.json();
           const tcgPrices = data.prices?.tcg || {};
           const subtypes = Object.values(tcgPrices);
-          const market = subtypes.find(s => s.market)?.market
-            || subtypes[0]?.market
-            || null;
-          if (market && parseFloat(market) > 0) {
-            tcg = parseFloat(market);
-          }
+          const market = subtypes.find(s => s.market)?.market || subtypes[0]?.market || null;
+          if (market && parseFloat(market) > 0) tcg = parseFloat(market);
         }
       } catch(e) {}
     }
 
     btn.textContent = 'Use →';
     btn.disabled = false;
-    fillCalc(name, tcg, p10, p9, p8);
+
+    // Use card number for specific eBay search
+    const specificName = num ? `${name} ${num}` : name;
+    fillCalc(name, tcg, p10, p9, p8, specificName, lang);
   }
 });
 </script>
