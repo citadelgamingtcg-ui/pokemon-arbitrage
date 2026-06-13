@@ -244,7 +244,7 @@ button.primary:hover{background:var(--accent);}
   </div>
 
   <!-- Calculator -->
-  <div class="card" style="margin-bottom:1rem;">
+  <div class="card" style="margin-bottom:1rem;" id="psa-calc-card">
     <div class="label">PSA grading ROI calculator</div>
 
     <!-- Card info -->
@@ -1133,17 +1133,14 @@ function exportFlips(){
 let psaLog = [];
 
 function fillCalc(name, tcg, p10, p9, p8) {
-  console.log('fillCalc called:', {name, tcg, p10, p9, p8});
   document.getElementById('psa-name').value = name;
-  if (p10 && p10 > 0) document.getElementById('psa-p10').value = parseFloat(p10).toFixed(2);
-  if (p9 && p9 > 0) document.getElementById('psa-p9').value = parseFloat(p9).toFixed(2);
-  if (p8 && p8 > 0) document.getElementById('psa-p8').value = parseFloat(p8).toFixed(2);
-  if (tcg && parseFloat(tcg) > 0) {
-    document.getElementById('psa-raw').value = parseFloat(tcg).toFixed(2);
-  } else {
-    document.getElementById('psa-raw').value = '';
-  }
-  document.querySelector('#tab-psa .card:nth-child(2)').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.getElementById('psa-p10').value = (p10 && p10 > 0) ? parseFloat(p10).toFixed(2) : '';
+  document.getElementById('psa-p9').value = (p9 && p9 > 0) ? parseFloat(p9).toFixed(2) : '';
+  document.getElementById('psa-p8').value = (p8 && p8 > 0) ? parseFloat(p8).toFixed(2) : '';
+  document.getElementById('psa-raw').value = (tcg && parseFloat(tcg) > 0) ? parseFloat(tcg).toFixed(2) : '';
+  // Scroll to the calculator card
+  const calcCard = document.getElementById('psa-calc-card');
+  if (calcCard) calcCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
   calcPSA();
 }
 
@@ -1334,9 +1331,14 @@ function calcPSA() {
 }
 
 function openEbaySold(grade) {
-  const name = document.getElementById('psa-search-name').value.trim();
-  if (!name) { alert('Enter a card name first'); return; }
-  const q = encodeURIComponent(`${name} PSA ${grade}`);
+  // Check quick lookup box first, then main search, then card name field
+  const name = document.getElementById('psa-search-name').value.trim()
+    || document.getElementById('psa-search').value.trim()
+    || document.getElementById('psa-name').value.trim();
+  if (!name) { alert('Enter a card name in the search box above first'); return; }
+  // Also fill the quick lookup box so user sees what was used
+  document.getElementById('psa-search-name').value = name;
+  const q = encodeURIComponent(`${name} PSA ${grade} Pokemon Japanese`);
   window.open(`https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1&_sop=13`, '_blank');
 }
 
