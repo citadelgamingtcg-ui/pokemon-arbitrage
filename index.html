@@ -1168,7 +1168,7 @@ async function searchPSAPrices() {
       'x-rapidapi-host': 'pokemon-tcg-api.p.rapidapi.com',
       'x-rapidapi-key': key
     };
-    const base = `https://pokemon-tcg-api.p.rapidapi.com/cards?search=${encodeURIComponent(query)}&limit=10`;
+    const base = `https://pokemon-tcg-api.p.rapidapi.com/cards?search=${encodeURIComponent(query)}&limit=20&sort=price_highest`;
     const [enRes, jpRes] = await Promise.all([
       fetch(base, { headers }),
       fetch(base + '&language=japanese', { headers })
@@ -1192,9 +1192,26 @@ async function searchPSAPrices() {
       const aExact = aName === qLower ? 0 : aName.startsWith(qLower) ? 1 : aName.includes(qLower) ? 2 : 3;
       const bExact = bName === qLower ? 0 : bName.startsWith(qLower) ? 1 : bName.includes(qLower) ? 2 : 3;
       if (aExact !== bExact) return aExact - bExact;
+      // Prefer cards with PSA data
       const aPSA = a.prices?.ebay?.graded?.psa?.['10']?.median_price ? 0 : 1;
       const bPSA = b.prices?.ebay?.graded?.psa?.['10']?.median_price ? 0 : 1;
-      return aPSA - bPSA;
+      if (aPSA !== bPSA) return aPSA - bPSA;
+      // Prefer higher rarity (SAR > SR > RR > R > C)
+      const rarityRank = r => {
+        if (!r) return 0;
+        const rl = r.toLowerCase();
+        if (rl.includes('special illustration') || rl === 'sar') return 10;
+        if (rl.includes('hyper') || rl === 'ur' || rl === 'hr') return 9;
+        if (rl.includes('alt art') || rl.includes('illustration rare') || rl === 'sir') return 8;
+        if (rl.includes('secret') || rl === 'sr') return 7;
+        if (rl.includes('rare holo') || rl === 'rrr') return 6;
+        if (rl === 'rr' || rl.includes('double')) return 5;
+        if (rl === 'r' || rl.includes('rare')) return 4;
+        if (rl === 'u' || rl.includes('uncommon')) return 2;
+        if (rl === 'c' || rl.includes('common')) return 1;
+        return 3;
+      };
+      return rarityRank(b.rarity) - rarityRank(a.rarity);
     });
 
     // Log first card's price structure so we can see exact field names
@@ -1220,7 +1237,7 @@ async function searchPSAPrices() {
       html += `<div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border);">
         <div>
           <div style="font-size:14px;font-weight:500;">${esc(c.name||'')}${langBadge} ${c.card_number?`<span style="font-size:12px;color:var(--text3);">#${c.card_number}</span>`:''}</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${esc(set)}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${esc(set)}${c.rarity ? ` · <span style="color:var(--yellow);">${esc(c.rarity)}</span>` : ''}</div>
           <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin-top:4px;">
             ${tcg?`<span style="color:var(--text2);">${tcgLabel||'CM price'}: <strong>$${parseFloat(tcg).toFixed(2)}</strong></span>`:`<span style="color:var(--text3);">No market price data</span>`}
             ${psa10?`<span style="color:var(--green);">PSA 10: <strong>$${parseFloat(psa10).toFixed(2)}</strong></span>`:'<span style="color:var(--text3);">PSA 10: no data</span>'}
