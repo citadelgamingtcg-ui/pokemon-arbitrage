@@ -1160,22 +1160,24 @@ async function searchPSAPrices() {
 
   btn.disabled = true;
   btn.textContent = 'Searching...';
-  el.innerHTML = `<div class="status loading">Fetching prices...</div>`;
+  el.innerHTML = `<div class="status loading">Searching English & Japanese cards...</div>`;
 
   try {
-    const res = await fetch(
-      `https://pokemon-tcg-api.p.rapidapi.com/cards?search=${encodeURIComponent(query)}&limit=20`,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-rapidapi-host': 'pokemon-tcg-api.p.rapidapi.com',
-          'x-rapidapi-key': key
-        }
-      }
-    );
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    let cards = data.data || data.cards || data.results || (Array.isArray(data) ? data : []);
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-rapidapi-host': 'pokemon-tcg-api.p.rapidapi.com',
+      'x-rapidapi-key': key
+    };
+    const base = `https://pokemon-tcg-api.p.rapidapi.com/cards?search=${encodeURIComponent(query)}&limit=10`;
+    const [enRes, jpRes] = await Promise.all([
+      fetch(base, { headers }),
+      fetch(base + '&language=japanese', { headers })
+    ]);
+    const enData = enRes.ok ? await enRes.json() : {};
+    const jpData = jpRes.ok ? await jpRes.json() : {};
+    const enCards = (enData.data || enData.cards || enData.results || (Array.isArray(enData) ? enData : [])).map(c => ({ ...c, _lang: 'EN' }));
+    const jpCards = (jpData.data || jpData.cards || jpData.results || (Array.isArray(jpData) ? jpData : [])).map(c => ({ ...c, _lang: 'JP' }));
+    let cards = [...enCards, ...jpCards];
 
     if (!cards.length) {
       el.innerHTML = `<div class="status error">No cards found. Try a shorter or different search term.</div>`;
@@ -1183,7 +1185,6 @@ async function searchPSAPrices() {
       return;
     }
 
-    // Sort by relevance — exact/starts-with matches first, then has PSA data, then by price
     const qLower = query.toLowerCase();
     cards = cards.sort((a, b) => {
       const aName = (a.name || '').toLowerCase();
@@ -1191,34 +1192,34 @@ async function searchPSAPrices() {
       const aExact = aName === qLower ? 0 : aName.startsWith(qLower) ? 1 : aName.includes(qLower) ? 2 : 3;
       const bExact = bName === qLower ? 0 : bName.startsWith(qLower) ? 1 : bName.includes(qLower) ? 2 : 3;
       if (aExact !== bExact) return aExact - bExact;
-      // Prefer cards with PSA data
       const aPSA = a.prices?.ebay?.graded?.psa?.['10']?.median_price ? 0 : 1;
       const bPSA = b.prices?.ebay?.graded?.psa?.['10']?.median_price ? 0 : 1;
       return aPSA - bPSA;
     });
 
-    let html = `<div style="margin-top:8px;">`;
-    cards.slice(0, 10).forEach(c => {
+    let html = `<div style="font-size:12px;color:var(--text3);margin-bottom:8px;">${enCards.length} English · ${jpCards.length} Japanese results</div><div>`;
+    cards.slice(0, 15).forEach(c => {
       const tcg = c.prices?.tcg_player?.market_price || c.prices?.tcgplayer?.market_price || null;
       const psa10 = c.prices?.ebay?.graded?.psa?.['10']?.median_price || null;
       const psa9 = c.prices?.ebay?.graded?.psa?.['9']?.median_price || null;
       const psa8 = c.prices?.ebay?.graded?.psa?.['8']?.median_price || null;
       const set = c.episode?.name || c.set?.name || '';
       const hasGraded = psa10 || psa9;
-
-      const cardId = `card_${Math.random().toString(36).slice(2)}`;
-      html += `<div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border);" id="${cardId}">
+      const langBadge = c._lang === 'JP'
+        ? `<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#1a2a4a;color:#7db8f7;margin-left:6px;">JP</span>`
+        : `<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#1a3a1a;color:#6fcf97;margin-left:6px;">EN</span>`;
+      html += `<div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border);">
         <div>
-          <div style="font-size:14px;font-weight:500;">${esc(c.name||'')} ${c.card_number?`<span style="font-size:12px;color:var(--text3);">#${c.card_number}</span>`:''}</div>
+          <div style="font-size:14px;font-weight:500;">${esc(c.name||'')}${langBadge} ${c.card_number?`<span style="font-size:12px;color:var(--text3);">#${c.card_number}</span>`:''}</div>
           <div style="font-size:12px;color:var(--text3);margin-top:2px;">${esc(set)}</div>
           <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin-top:4px;">
-            ${tcg?`<span style="color:var(--text2);">TCG raw: <strong>$${parseFloat(tcg).toFixed(2)}</strong></span>`:`<span style="color:var(--text3);">TCG: no data — enter raw price manually</span>`}
+            ${tcg?`<span style="color:var(--text2);">TCG raw: <strong>$${parseFloat(tcg).toFixed(2)}</strong></span>`:`<span style="color:var(--text3);">TCG: no data</span>`}
             ${psa10?`<span style="color:var(--green);">PSA 10: <strong>$${parseFloat(psa10).toFixed(2)}</strong></span>`:'<span style="color:var(--text3);">PSA 10: no data</span>'}
             ${psa9?`<span style="color:var(--yellow);">PSA 9: <strong>$${parseFloat(psa9).toFixed(2)}</strong></span>`:''}
             ${psa8?`<span style="color:var(--text3);">PSA 8: <strong>$${parseFloat(psa8).toFixed(2)}</strong></span>`:''}
           </div>
         </div>
-        <button class="psa-use-btn" 
+        <button class="psa-use-btn"
           data-name="${esc(c.name||'')}"
           data-tcg="${tcg||''}"
           data-p10="${psa10||''}"
