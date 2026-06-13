@@ -1133,13 +1133,13 @@ function exportFlips(){
 let psaLog = [];
 
 function fillCalc(name, tcg, p10, p9, p8) {
+  console.log('fillCalc called:', {name, tcg, p10, p9, p8});
   document.getElementById('psa-name').value = name;
-  if (p10) document.getElementById('psa-p10').value = p10.toFixed(2);
-  if (p9) document.getElementById('psa-p9').value = p9.toFixed(2);
-  if (p8) document.getElementById('psa-p8').value = p8.toFixed(2);
-  // Only fill raw price if TCG price exists and is meaningful
-  if (tcg && tcg > 0) {
-    document.getElementById('psa-raw').value = tcg.toFixed(2);
+  if (p10 && p10 > 0) document.getElementById('psa-p10').value = parseFloat(p10).toFixed(2);
+  if (p9 && p9 > 0) document.getElementById('psa-p9').value = parseFloat(p9).toFixed(2);
+  if (p8 && p8 > 0) document.getElementById('psa-p8').value = parseFloat(p8).toFixed(2);
+  if (tcg && parseFloat(tcg) > 0) {
+    document.getElementById('psa-raw').value = parseFloat(tcg).toFixed(2);
   } else {
     document.getElementById('psa-raw').value = '';
   }
@@ -1207,7 +1207,8 @@ async function searchPSAPrices() {
       const set = c.episode?.name || c.set?.name || '';
       const hasGraded = psa10 || psa9;
 
-      html += `<div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border);">
+      const cardId = `card_${Math.random().toString(36).slice(2)}`;
+      html += `<div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border);" id="${cardId}">
         <div>
           <div style="font-size:14px;font-weight:500;">${esc(c.name||'')} ${c.card_number?`<span style="font-size:12px;color:var(--text3);">#${c.card_number}</span>`:''}</div>
           <div style="font-size:12px;color:var(--text3);margin-top:2px;">${esc(set)}</div>
@@ -1218,7 +1219,13 @@ async function searchPSAPrices() {
             ${psa8?`<span style="color:var(--text3);">PSA 8: <strong>$${parseFloat(psa8).toFixed(2)}</strong></span>`:''}
           </div>
         </div>
-        <button onclick="fillCalc('${esc(c.name||'')}',${tcg||0},${psa10||0},${psa9||0},${psa8||0})" style="font-size:12px;padding:5px 12px;white-space:nowrap;">${hasGraded?'Use →':'Use (manual)'}</button>
+        <button class="psa-use-btn" 
+          data-name="${esc(c.name||'')}"
+          data-tcg="${tcg||''}"
+          data-p10="${psa10||''}"
+          data-p9="${psa9||''}"
+          data-p8="${psa8||''}"
+          style="font-size:12px;padding:5px 12px;white-space:nowrap;">${hasGraded?'Use →':'Use (manual)'}</button>
       </div>`;
     });
     html += `</div>`;
@@ -1650,6 +1657,19 @@ function esc(s){
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 init();
 loadSets();
+
+// Event delegation for PSA use buttons
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('psa-use-btn')) {
+    const btn = e.target;
+    const name = btn.dataset.name || '';
+    const tcg = parseFloat(btn.dataset.tcg) || 0;
+    const p10 = parseFloat(btn.dataset.p10) || 0;
+    const p9 = parseFloat(btn.dataset.p9) || 0;
+    const p8 = parseFloat(btn.dataset.p8) || 0;
+    fillCalc(name, tcg, p10, p9, p8);
+  }
+});
 </script>
 </body>
 </html>
