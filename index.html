@@ -113,6 +113,8 @@ button.primary:hover{background:var(--accent);}
   <button class="tab active" onclick="switchTab('search')">Search</button>
   <button class="tab" onclick="switchTab('watchlist')">Watchlist</button>
   <button class="tab" onclick="switchTab('flips')">Flip History</button>
+  <button class="tab" onclick="switchTab('psa')">PSA Flip</button>
+  <button class="tab" onclick="switchTab('currency')">¥ Currency</button>
   <button class="tab" onclick="switchTab('settings')">Settings</button>
 </div>
 
@@ -221,6 +223,197 @@ button.primary:hover{background:var(--accent);}
   </div>
 </div>
 
+<!-- PSA FLIP TAB -->
+<div id="tab-psa" class="tab-content">
+
+  <!-- Summary metrics -->
+  <div class="grid-3" style="margin-bottom:1rem;">
+    <div class="metric"><div class="metric-val" id="psa-fm-profit">$0.00</div><div class="metric-lbl">Total PSA profit</div></div>
+    <div class="metric"><div class="metric-val" id="psa-fm-count">0</div><div class="metric-lbl">Cards logged</div></div>
+    <div class="metric"><div class="metric-val" id="psa-fm-roi">0%</div><div class="metric-lbl">Avg ROI</div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem;">
+    <div class="label">Card price lookup</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">Search a card to auto-fill PSA 10/9/8 prices from real eBay sold data</div>
+    <div class="row center" style="gap:8px;margin-bottom:8px;">
+      <input type="text" id="psa-search" placeholder="e.g. Umbreon VMAX Alt Art Japanese" style="flex:1;" onkeydown="if(event.key==='Enter')searchPSAPrices()">
+      <button class="primary" onclick="searchPSAPrices()" id="psa-search-btn">Search prices →</button>
+    </div>
+    <div id="psa-search-results"></div>
+  </div>
+
+  <!-- Calculator -->
+  <div class="card" style="margin-bottom:1rem;">
+    <div class="label">PSA grading ROI calculator</div>
+
+    <!-- Card info -->
+    <div class="grid-2" style="margin-bottom:10px;">
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Card name</div>
+        <input type="text" id="psa-name" placeholder="e.g. Umbreon VMAX Alt Art Japanese">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Raw buy price ($)</div>
+        <input type="number" id="psa-raw" placeholder="0.00" step="0.01" oninput="calcPSA()">
+      </div>
+    </div>
+
+    <!-- PSA prices -->
+    <div style="background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;">
+      <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">eBay sold prices (look up on ebay.com/sold)</div>
+      <div class="grid-3">
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">PSA 10 sold price ($)</div>
+          <input type="number" id="psa-p10" placeholder="0.00" step="0.01" oninput="calcPSA()">
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">PSA 9 sold price ($)</div>
+          <input type="number" id="psa-p9" placeholder="0.00" step="0.01" oninput="calcPSA()">
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">PSA 8 sold price ($)</div>
+          <input type="number" id="psa-p8" placeholder="0.00" step="0.01" oninput="calcPSA()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Grading inputs -->
+    <div class="grid-3" style="margin-bottom:10px;">
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Grading tier</div>
+        <select id="psa-tier" onchange="updateGradingCost()">
+          <option value="25">Value — $25/card (45-65 days)</option>
+          <option value="50">Regular — $50/card (20-30 days)</option>
+          <option value="75">Express — $75/card (10-15 days)</option>
+          <option value="150">Super Express — $150/card (5 days)</option>
+          <option value="300">Walk-through — $300/card (1-2 days)</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Cards in submission</div>
+        <input type="number" id="psa-qty" value="1" min="1" step="1" oninput="calcPSA()">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Shipping both ways ($)</div>
+        <input type="number" id="psa-ship" value="25" step="0.01" oninput="calcPSA()">
+      </div>
+    </div>
+
+    <!-- Hit rate -->
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <div style="font-size:12px;color:var(--text3);">Estimated PSA 10 hit rate</div>
+        <div style="font-size:13px;font-weight:500;color:var(--text);" id="psa-rate-label">30%</div>
+      </div>
+      <input type="range" id="psa-rate" min="5" max="80" value="30" step="5"
+        oninput="document.getElementById('psa-rate-label').textContent=this.value+'%';calcPSA()"
+        style="width:100%;accent-color:var(--accent);">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:2px;">
+        <span>5% (rough condition)</span>
+        <span>40% (pack fresh)</span>
+        <span>80% (pristine)</span>
+      </div>
+    </div>
+
+    <!-- Sale fee -->
+    <div class="grid-2" style="margin-bottom:12px;">
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Sale platform fee (%)</div>
+        <input type="number" id="psa-fee" value="12.9" step="0.1" oninput="calcPSA()"
+          placeholder="eBay ~12.9%, TCGplayer ~17.5%">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Grading cost per card ($)</div>
+        <input type="number" id="psa-grade-cost" value="25" step="1" oninput="calcPSA()" readonly
+          style="opacity:0.7;">
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="psa-result"></div>
+
+    <!-- Log button -->
+    <div class="row center" style="margin-top:12px;">
+      <button class="primary" onclick="logPSAFlip()">Log this card →</button>
+      <span id="psa-log-msg" class="status" style="margin-left:10px;"></span>
+    </div>
+  </div>
+
+  <!-- Quick eBay search links -->
+  <div class="card" style="margin-bottom:1rem;">
+    <div class="label">Quick eBay PSA sold lookup</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:10px;">Type a card name and open eBay sold listings for each grade directly</div>
+    <div class="row center" style="gap:8px;flex-wrap:wrap;">
+      <input type="text" id="psa-search-name" placeholder="e.g. Umbreon VMAX Alt Art Japanese" style="flex:1;">
+      <button onclick="openEbaySold(10)" class="primary" style="white-space:nowrap;">PSA 10 sold ↗</button>
+      <button onclick="openEbaySold(9)" style="white-space:nowrap;">PSA 9 sold ↗</button>
+      <button onclick="openEbaySold(8)" style="white-space:nowrap;">PSA 8 sold ↗</button>
+    </div>
+  </div>
+
+  <!-- PSA log -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="label" style="margin:0;">PSA flip log</div>
+      <button onclick="exportPSALog()" style="font-size:12px;padding:5px 12px;">Export CSV</button>
+    </div>
+    <div id="psaLog"><div class="empty">No PSA flips logged yet.</div></div>
+  </div>
+
+</div>
+
+<!-- CURRENCY TAB -->
+<div id="tab-currency" class="tab-content">
+
+  <div class="card" style="margin-bottom:1rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="label" style="margin:0;">¥ Yen → USD Converter</div>
+      <div id="fx-rate-display" style="font-size:12px;color:var(--text3);">Loading live rate...</div>
+    </div>
+
+    <!-- Single conversion -->
+    <div class="grid-2" style="margin-bottom:12px;">
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Amount in Yen (¥)</div>
+        <input type="number" id="fx-yen" placeholder="e.g. 15000" step="1" oninput="convertCurrency()">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Amount in USD ($)</div>
+        <input type="number" id="fx-usd" placeholder="e.g. 100.00" step="0.01" oninput="convertCurrencyReverse()">
+      </div>
+    </div>
+    <div id="fx-result" style="font-size:13px;color:var(--text3);margin-bottom:16px;"></div>
+
+    <hr style="border:none;border-top:0.5px solid var(--border);margin-bottom:16px;">
+
+    <!-- Distributor deal calculator -->
+    <div class="label">Distributor deal calculator</div>
+    <div class="grid-3" style="margin-bottom:10px;">
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Price per box (¥)</div>
+        <input type="number" id="fx-box-yen" placeholder="e.g. 8000" step="1" oninput="calcDistributor()">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Qty boxes</div>
+        <input type="number" id="fx-box-qty" value="1" min="1" step="1" oninput="calcDistributor()">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Shipping to me ($)</div>
+        <input type="number" id="fx-box-ship" value="0" step="0.01" oninput="calcDistributor()">
+      </div>
+    </div>
+    <div id="fx-dist-result" style="margin-top:4px;"></div>
+  </div>
+
+  <!-- Quick reference -->
+  <div class="card">
+    <div class="label">Quick reference — common box prices</div>
+    <div id="fx-quick" style="font-size:13px;color:var(--text3);">Loading...</div>
+  </div>
+
+</div>
+
 <!-- SETTINGS TAB -->
 <div id="tab-settings" class="tab-content">
   <div class="card">
@@ -234,12 +427,16 @@ button.primary:hover{background:var(--accent);}
     <div style="font-size:12px;color:var(--text3);">Total effective fee: <span id="cfg-totalfee" style="color:var(--text2);">17.5%</span></div>
   </div>
   <div class="card">
-    <div class="label">eBay API (coming soon)</div>
+    <div class="label">API Keys</div>
     <div style="margin-bottom:10px;">
-      <div style="font-size:12px;color:var(--text3);margin-bottom:5px;">eBay App ID</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:5px;">eBay App ID (coming soon)</div>
       <input type="text" id="cfg-ebaykey" placeholder="Paste your eBay Browse API key here" onchange="saveSettings()">
     </div>
-    <div style="font-size:12px;color:var(--text3);">Once you have your eBay API key, paste it here and listings will auto-populate in search results.</div>
+    <div style="margin-bottom:10px;">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:5px;">RapidAPI Key (pokemon-api.com — PSA prices)</div>
+      <input type="text" id="cfg-rapidkey" placeholder="Paste your RapidAPI key here" onchange="saveSettings()">
+    </div>
+    <div style="font-size:12px;color:var(--text3);">Get a free RapidAPI key at <a href="https://rapidapi.com/tcggopro/api/pokemon-tcg-api" target="_blank" style="color:var(--accent);">rapidapi.com</a> — 100 free requests/day includes PSA graded prices.</div>
   </div>
 </div>
 
@@ -274,7 +471,7 @@ const MAIN_JP_SETS = [
 ];
 
 // ─── State ────────────────────────────────────────────────────────────────────
-let settings = {tcgFee:15,procFee:2.5,shipOut:5,shipIn:0,ebayKey:''};
+let settings = {tcgFee:15,procFee:2.5,shipOut:5,shipIn:0,ebayKey:'',rapidKey:''};
 let watchlist = [];
 let flips = [];
 let allSets = [];
@@ -285,12 +482,14 @@ function init() {
     const s = localStorage.getItem('arb-settings'); if(s) settings={...settings,...JSON.parse(s)};
     const w = localStorage.getItem('arb-watchlist'); if(w) watchlist=JSON.parse(w);
     const f = localStorage.getItem('arb-flips'); if(f) flips=JSON.parse(f);
+    const ps = localStorage.getItem('arb-psa'); if(ps) psaLog=JSON.parse(ps);
   } catch(e){}
   document.getElementById('cfg-tcgfee').value = settings.tcgFee;
   document.getElementById('cfg-procfee').value = settings.procFee;
   document.getElementById('cfg-shipout').value = settings.shipOut;
   document.getElementById('cfg-shipin').value = settings.shipIn;
   document.getElementById('cfg-ebaykey').value = settings.ebayKey||'';
+  document.getElementById('cfg-rapidkey').value = settings.rapidKey||'';
   document.getElementById('fl-date').value = new Date().toISOString().slice(0,10);
   document.getElementById('fl-fee').value = settings.tcgFee + settings.procFee;
   document.getElementById('fl-shipout') && (document.getElementById('fl-shipout').value = settings.shipOut);
@@ -304,6 +503,7 @@ function saveSettings() {
   settings.shipOut = parseFloat(document.getElementById('cfg-shipout').value)||5;
   settings.shipIn = parseFloat(document.getElementById('cfg-shipin').value)||0;
   settings.ebayKey = document.getElementById('cfg-ebaykey').value.trim();
+  settings.rapidKey = document.getElementById('cfg-rapidkey').value.trim();
   localStorage.setItem('arb-settings',JSON.stringify(settings));
   updateTotalFee();
 }
@@ -314,11 +514,13 @@ function updateTotalFee() {
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 function switchTab(name) {
-  const tabs=['search','watchlist','flips','settings'];
+  const tabs=['search','watchlist','flips','psa','currency','settings'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===name));
   document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   if(name==='flips'){renderFlipLog();populateFlipDropdown();}
+  if(name==='currency'){loadExchangeRate();}
+  if(name==='psa'){renderPSALog();}
 }
 
 // ─── Set browser ──────────────────────────────────────────────────────────────
@@ -925,6 +1127,490 @@ function exportFlips(){
   a.href=URL.createObjectURL(blob);
   a.download=`pokemon-flips-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
+}
+
+// ─── PSA Flip Calculator ──────────────────────────────────────────────────────
+let psaLog = [];
+
+async function searchPSAPrices() {
+  const query = document.getElementById('psa-search').value.trim();
+  const key = settings.rapidKey;
+  const el = document.getElementById('psa-search-results');
+  const btn = document.getElementById('psa-search-btn');
+
+  if (!query) return;
+  if (!key) {
+    el.innerHTML = `<div class="status error">Add your RapidAPI key in Settings first.</div>`;
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Searching...';
+  el.innerHTML = `<div class="status loading">Fetching prices from pokemon-api.com...</div>`;
+
+  try {
+    const res = await fetch(
+      `https://pokemon-tcg-api.p.rapidapi.com/cards?search=${encodeURIComponent(query)}&sort=price_highest&limit=8`,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-rapidapi-host': 'pokemon-tcg-api.p.rapidapi.com',
+          'x-rapidapi-key': key
+        }
+      }
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const cards = data.data || data.cards || data.results || (Array.isArray(data) ? data : []);
+
+    if (!cards.length) {
+      el.innerHTML = `<div class="status error">No cards found. Try a shorter search term.</div>`;
+      btn.disabled = false; btn.textContent = 'Search prices →';
+      return;
+    }
+
+    let html = `<div style="margin-top:8px;">`;
+    cards.forEach(c => {
+      const tcg = c.prices?.tcg_player?.market_price || c.prices?.tcgplayer?.market_price || null;
+      const psa10 = c.prices?.ebay?.graded?.psa?.['10']?.median_price || null;
+      const psa9 = c.prices?.ebay?.graded?.psa?.['9']?.median_price || null;
+      const psa8 = c.prices?.ebay?.graded?.psa?.['8']?.median_price || null;
+      const set = c.episode?.name || c.set?.name || '';
+      const hasGraded = psa10 || psa9;
+
+      html += `<div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border);">
+        <div>
+          <div style="font-size:14px;font-weight:500;">${esc(c.name||'')}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${esc(set)} ${c.card_number?'· #'+c.card_number:''}</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin-top:4px;">
+            ${tcg?`<span style="color:var(--text2);">TCG: <strong>$${parseFloat(tcg).toFixed(2)}</strong></span>`:''}
+            ${psa10?`<span style="color:var(--green);">PSA 10: <strong>$${parseFloat(psa10).toFixed(2)}</strong></span>`:'<span style="color:var(--text3);">PSA 10: no data</span>'}
+            ${psa9?`<span style="color:var(--yellow);">PSA 9: <strong>$${parseFloat(psa9).toFixed(2)}</strong></span>`:''}
+            ${psa8?`<span style="color:var(--text3);">PSA 8: <strong>$${parseFloat(psa8).toFixed(2)}</strong></span>`:''}
+          </div>
+        </div>
+        ${hasGraded?`<button onclick="fillCalc('${esc(c.name||'')}',${tcg||0},${psa10||0},${psa9||0},${psa8||0})" style="font-size:12px;padding:5px 12px;white-space:nowrap;">Use →</button>`:'<div style="font-size:11px;color:var(--text3);">No PSA data</div>'}
+      </div>`;
+    });
+    html += `</div>`;
+    el.innerHTML = html;
+
+  } catch(e) {
+    el.innerHTML = `<div class="status error">Error: ${e.message}. Check your RapidAPI key in Settings.</div>`;
+  }
+  btn.disabled = false; btn.textContent = 'Search prices →';
+}
+
+function fillCalc(name, tcg, p10, p9, p8) {
+  document.getElementById('psa-name').value = name;
+  if (p10) document.getElementById('psa-p10').value = p10.toFixed(2);
+  if (p9) document.getElementById('psa-p9').value = p9.toFixed(2);
+  if (p8) document.getElementById('psa-p8').value = p8.toFixed(2);
+  if (tcg) document.getElementById('psa-raw').value = tcg.toFixed(2);
+  // Scroll to calc
+  document.getElementById('psa-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  calcPSA();
+}
+
+function updateGradingCost() {
+  const cost = document.getElementById('psa-tier').value;
+  document.getElementById('psa-grade-cost').value = cost;
+  calcPSA();
+}
+
+function calcPSA() {
+  const raw = parseFloat(document.getElementById('psa-raw').value) || 0;
+  const p10 = parseFloat(document.getElementById('psa-p10').value) || 0;
+  const p9 = parseFloat(document.getElementById('psa-p9').value) || 0;
+  const p8 = parseFloat(document.getElementById('psa-p8').value) || 0;
+  const gradeCost = parseFloat(document.getElementById('psa-grade-cost').value) || 25;
+  const qty = Math.max(1, parseInt(document.getElementById('psa-qty').value) || 1);
+  const shipTotal = parseFloat(document.getElementById('psa-ship').value) || 25;
+  const feeRate = (parseFloat(document.getElementById('psa-fee').value) || 12.9) / 100;
+  const hitRate = parseInt(document.getElementById('psa-rate').value) / 100;
+  const el = document.getElementById('psa-result');
+
+  if (!raw || !p10) { el.innerHTML = ''; return; }
+
+  // Per card costs
+  const shipPerCard = shipTotal / qty;
+  const totalCostPerCard = raw + gradeCost + shipPerCard;
+
+  // Grade distribution estimate
+  const rate10 = hitRate;
+  const rate9 = Math.min(1 - rate10, (1 - rate10) * 0.55);
+  const rate8 = Math.min(1 - rate10 - rate9, (1 - rate10) * 0.30);
+  const rateLower = 1 - rate10 - rate9 - rate8;
+
+  // Revenue per grade after fees
+  const rev10 = p10 * (1 - feeRate);
+  const rev9 = p9 > 0 ? p9 * (1 - feeRate) : raw * 0.9; // fallback to raw if no p9 entered
+  const rev8 = p8 > 0 ? p8 * (1 - feeRate) : raw * 0.7;
+  const revLower = raw * 0.5; // sell raw at a loss if grades poorly
+
+  // Expected value
+  const ev = (rate10 * rev10) + (rate9 * rev9) + (rate8 * rev8) + (rateLower * revLower);
+  const evProfit = ev - totalCostPerCard;
+  const roi = totalCostPerCard > 0 ? (evProfit / totalCostPerCard * 100) : 0;
+
+  // Best case (PSA 10)
+  const bestProfit = rev10 - totalCostPerCard;
+  // Worst case (grades 8 or lower)
+  const worstProfit = rev8 - totalCostPerCard;
+
+  const cls = evProfit > 0 ? 'pos' : evProfit < 0 ? 'neg' : 'neutral';
+  const sign = evProfit >= 0 ? '+' : '';
+  const bSign = bestProfit >= 0 ? '+' : '';
+  const wSign = worstProfit >= 0 ? '+' : '';
+
+  // Break-even PSA 10 price needed
+  const breakEven10 = (totalCostPerCard / (1 - feeRate)).toFixed(2);
+
+  el.innerHTML = `
+  <div class="profit-bar ${cls}" style="flex-direction:column;align-items:flex-start;gap:12px;">
+    <div style="display:flex;gap:24px;flex-wrap:wrap;width:100%;">
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Expected profit</div>
+        <div class="profit-main ${cls}">${sign}$${Math.abs(evProfit).toFixed(2)}</div>
+        <div style="font-size:11px;color:var(--text3);">at ${(hitRate*100).toFixed(0)}% PSA 10 rate</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Best case (PSA 10)</div>
+        <div style="font-size:18px;font-weight:600;color:${bestProfit>0?'var(--green)':'var(--red)'};">${bSign}$${Math.abs(bestProfit).toFixed(2)}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Worst case (PSA 8)</div>
+        <div style="font-size:18px;font-weight:600;color:${worstProfit>0?'var(--green)':'var(--red)'};">${wSign}$${Math.abs(worstProfit).toFixed(2)}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Expected ROI</div>
+        <div style="font-size:18px;font-weight:600;color:${roi>0?'var(--green)':'var(--red)'};">${roi.toFixed(1)}%</div>
+      </div>
+    </div>
+    <div class="profit-breakdown" style="width:100%;">
+      <div class="pb-item">Raw cost <span>$${raw.toFixed(2)}</span></div>
+      <div class="pb-item">Grading fee <span>$${gradeCost.toFixed(2)}</span></div>
+      <div class="pb-item">Ship/card <span>$${shipPerCard.toFixed(2)}</span></div>
+      <div class="pb-item">Total cost/card <span style="color:var(--text2);font-weight:500;">$${totalCostPerCard.toFixed(2)}</span></div>
+      <div class="pb-item">Break-even PSA 10 <span style="color:var(--yellow);">$${breakEven10}</span></div>
+      <div class="pb-item">Sale fee (${(feeRate*100).toFixed(1)}%) <span>-$${(p10*feeRate).toFixed(2)}</span></div>
+    </div>
+    <div style="width:100%;background:var(--bg4);border-radius:var(--radius-sm);padding:10px 12px;">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;">Grade distribution at ${(hitRate*100).toFixed(0)}% hit rate</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;">
+        <div class="pb-item">PSA 10 <span style="color:var(--green);">${(rate10*100).toFixed(0)}%</span></div>
+        <div class="pb-item">PSA 9 <span style="color:var(--yellow);">${(rate9*100).toFixed(0)}%</span></div>
+        <div class="pb-item">PSA 8 <span style="color:var(--text2);">${(rate8*100).toFixed(0)}%</span></div>
+        <div class="pb-item">PSA 7 or lower <span style="color:var(--red);">${(rateLower*100).toFixed(0)}%</span></div>
+      </div>
+    </div>
+    ${evProfit < 0 ? `<div style="font-size:13px;color:var(--red);">⚠️ This submission is not worth it at current prices. You need PSA 10 to sell for at least <strong>$${breakEven10}</strong> to break even.</div>` : `<div style="font-size:13px;color:var(--green);">✅ Looks profitable on expected value. PSA 10 needs to hold above $${breakEven10} to break even.</div>`}
+  </div>`;
+}
+
+function openEbaySold(grade) {
+  const name = document.getElementById('psa-search-name').value.trim();
+  if (!name) { alert('Enter a card name first'); return; }
+  const q = encodeURIComponent(`${name} PSA ${grade}`);
+  window.open(`https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1&_sop=13`, '_blank');
+}
+
+function logPSAFlip() {
+  const name = document.getElementById('psa-name').value.trim();
+  const raw = parseFloat(document.getElementById('psa-raw').value) || 0;
+  const p10 = parseFloat(document.getElementById('psa-p10').value) || 0;
+  const p9 = parseFloat(document.getElementById('psa-p9').value) || 0;
+  const p8 = parseFloat(document.getElementById('psa-p8').value) || 0;
+  const gradeCost = parseFloat(document.getElementById('psa-grade-cost').value) || 25;
+  const qty = Math.max(1, parseInt(document.getElementById('psa-qty').value) || 1);
+  const shipTotal = parseFloat(document.getElementById('psa-ship').value) || 25;
+  const feeRate = (parseFloat(document.getElementById('psa-fee').value) || 12.9) / 100;
+  const hitRate = parseInt(document.getElementById('psa-rate').value);
+  const msgEl = document.getElementById('psa-log-msg');
+
+  if (!name) { msgEl.textContent = 'Enter a card name.'; msgEl.className = 'status error'; return; }
+  if (!raw) { msgEl.textContent = 'Enter the raw buy price.'; msgEl.className = 'status error'; return; }
+  if (!p10) { msgEl.textContent = 'Enter at least the PSA 10 sold price.'; msgEl.className = 'status error'; return; }
+
+  const shipPerCard = shipTotal / qty;
+  const totalCostPerCard = raw + gradeCost + shipPerCard;
+  const bestProfit = (p10 * (1 - feeRate)) - totalCostPerCard;
+  const breakEven = (totalCostPerCard / (1 - feeRate)).toFixed(2);
+
+  psaLog.unshift({
+    id: Date.now(),
+    name, raw, p10, p9, p8,
+    gradeCost, qty, shipTotal, shipPerCard,
+    totalCostPerCard, feeRate: feeRate * 100,
+    hitRate, bestProfit, breakEven,
+    status: 'pending',
+    actualGrade: null,
+    soldPrice: null,
+    actualProfit: null,
+    date: new Date().toLocaleDateString()
+  });
+  localStorage.setItem('arb-psa', JSON.stringify(psaLog));
+
+  // Reset form
+  document.getElementById('psa-name').value = '';
+  document.getElementById('psa-raw').value = '';
+  document.getElementById('psa-p10').value = '';
+  document.getElementById('psa-p9').value = '';
+  document.getElementById('psa-p8').value = '';
+  document.getElementById('psa-result').innerHTML = '';
+  msgEl.textContent = '✓ Card logged!';
+  msgEl.className = 'status';
+  setTimeout(() => { msgEl.textContent = ''; }, 2000);
+  renderPSALog();
+}
+
+function updatePSAResult(id) {
+  const entry = psaLog.find(p => p.id === id);
+  if (!entry) return;
+  const grade = document.getElementById(`psa_${id}_grade`).value;
+  const sold = parseFloat(document.getElementById(`psa_${id}_sold`).value) || 0;
+  const msgEl = document.getElementById(`psa_${id}_msg`);
+  if (!grade || !sold) { msgEl.textContent = 'Enter grade and sold price.'; msgEl.className = 'status error'; return; }
+  const actualProfit = (sold * (1 - entry.feeRate / 100)) - entry.totalCostPerCard;
+  entry.actualGrade = grade;
+  entry.soldPrice = sold;
+  entry.actualProfit = actualProfit;
+  entry.status = 'sold';
+  localStorage.setItem('arb-psa', JSON.stringify(psaLog));
+  msgEl.textContent = '✓ Result saved!';
+  msgEl.className = 'status';
+  setTimeout(() => { msgEl.textContent = ''; renderPSALog(); }, 1000);
+}
+
+function deletePSAEntry(id) {
+  psaLog = psaLog.filter(p => p.id !== id);
+  localStorage.setItem('arb-psa', JSON.stringify(psaLog));
+  renderPSALog();
+}
+
+function renderPSALog() {
+  // Update metrics
+  const sold = psaLog.filter(p => p.actualProfit !== null);
+  const totalProfit = sold.reduce((s, p) => s + p.actualProfit, 0);
+  const avgRoi = sold.length > 0 ? sold.reduce((s, p) => s + (p.actualProfit / p.totalCostPerCard * 100), 0) / sold.length : 0;
+  const pEl = document.getElementById('psa-fm-profit');
+  pEl.textContent = (totalProfit >= 0 ? '+' : '') + '$' + Math.abs(totalProfit).toFixed(2);
+  pEl.style.color = totalProfit > 0 ? 'var(--green)' : totalProfit < 0 ? 'var(--red)' : 'var(--text3)';
+  document.getElementById('psa-fm-count').textContent = psaLog.length;
+  const rEl = document.getElementById('psa-fm-roi');
+  rEl.textContent = avgRoi.toFixed(1) + '%';
+  rEl.style.color = avgRoi > 0 ? 'var(--green)' : avgRoi < 0 ? 'var(--red)' : 'var(--text3)';
+
+  const el = document.getElementById('psaLog');
+  if (!psaLog.length) { el.innerHTML = '<div class="empty">No PSA flips logged yet.</div>'; return; }
+
+  const statusColor = { pending: 'var(--text3)', graded: 'var(--yellow)', sold: 'var(--green)' };
+  const gradeColor = g => {
+    const n = parseInt(g); if (n === 10) return 'var(--green)'; if (n === 9) return 'var(--yellow)'; return 'var(--red)';
+  };
+
+  let html = '';
+  psaLog.forEach(p => {
+    const hasSold = p.actualProfit !== null;
+    const profitCls = hasSold ? (p.actualProfit > 0 ? 'pos' : 'neg') : 'neutral';
+    const sign = hasSold && p.actualProfit >= 0 ? '+' : '';
+    html += `
+    <div style="border-bottom:0.5px solid var(--border);padding:14px 0;">
+      <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:start;margin-bottom:10px;">
+        <div>
+          <div style="font-size:14px;font-weight:500;">${esc(p.name)}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${p.date} · ${p.hitRate}% PSA 10 rate set · Value tier $${p.gradeCost}</div>
+          <div style="font-size:12px;margin-top:4px;">
+            <select onchange="psaLog.find(x=>x.id===${p.id}).status=this.value;localStorage.setItem('arb-psa',JSON.stringify(psaLog));"
+              style="font-size:12px;padding:3px 8px;background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--radius-sm);color:${statusColor[p.status]||'var(--text3)'};">
+              <option value="pending" ${p.status==='pending'?'selected':''}>⏳ Submitted / waiting</option>
+              <option value="graded" ${p.status==='graded'?'selected':''}>📦 Graded / not sold</option>
+              <option value="sold" ${p.status==='sold'?'selected':''}>✅ Sold</option>
+            </select>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:var(--text3);">All-in cost</div>
+          <div style="font-size:14px;font-weight:600;">$${p.totalCostPerCard.toFixed(2)}</div>
+          <div style="font-size:11px;color:var(--text3);">Break-even $${p.breakEven}</div>
+        </div>
+        ${hasSold ? `
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:var(--text3);">Actual result</div>
+          <div style="font-size:14px;font-weight:600;color:${gradeColor(p.actualGrade)};">PSA ${p.actualGrade}</div>
+          <div style="font-size:11px;color:${p.actualProfit>0?'var(--green)':'var(--red)'};">${sign}$${Math.abs(p.actualProfit).toFixed(2)}</div>
+        </div>` : `
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:var(--text3);">Best case</div>
+          <div style="font-size:14px;font-weight:600;color:${p.bestProfit>0?'var(--green)':'var(--red)'};">${p.bestProfit>=0?'+':''}$${Math.abs(p.bestProfit).toFixed(2)}</div>
+          <div style="font-size:11px;color:var(--text3);">if PSA 10</div>
+        </div>`}
+        <div><button class="del-btn" onclick="deletePSAEntry(${p.id})">Delete</button></div>
+      </div>
+
+      <!-- Price reference -->
+      <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text3);margin-bottom:10px;">
+        ${p.p10?`<span>PSA 10: <strong style="color:var(--text);">$${p.p10}</strong></span>`:''}
+        ${p.p9?`<span>PSA 9: <strong style="color:var(--text);">$${p.p9}</strong></span>`:''}
+        ${p.p8?`<span>PSA 8: <strong style="color:var(--text);">$${p.p8}</strong></span>`:''}
+        <span>Raw paid: <strong style="color:var(--text);">$${p.raw}</strong></span>
+      </div>
+
+      <!-- Log actual result -->
+      ${!hasSold ? `
+      <div style="background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;">
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Log actual result when card comes back / sells</div>
+        <div style="display:grid;grid-template-columns:120px 1fr auto;gap:8px;align-items:flex-end;">
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Grade received</div>
+            <select id="psa_${p.id}_grade" style="font-size:13px;padding:6px 8px;">
+              <option value="">—</option>
+              <option value="10">PSA 10 🏆</option>
+              <option value="9">PSA 9</option>
+              <option value="8">PSA 8</option>
+              <option value="7">PSA 7</option>
+              <option value="6">PSA 6 or lower</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Sold price ($)</div>
+            <input type="number" id="psa_${p.id}_sold" placeholder="0.00" step="0.01" style="font-size:13px;padding:6px 8px;">
+          </div>
+          <button onclick="updatePSAResult(${p.id})" style="padding:6px 14px;font-size:13px;">Save result →</button>
+        </div>
+        <div style="margin-top:6px;"><span id="psa_${p.id}_msg" class="status"></span></div>
+      </div>` : `
+      <div class="profit-bar ${profitCls}">
+        <div class="profit-breakdown">
+          <div class="pb-item">Sold for <span>$${p.soldPrice.toFixed(2)}</span></div>
+          <div class="pb-item">Fee (${p.feeRate}%) <span>-$${(p.soldPrice*p.feeRate/100).toFixed(2)}</span></div>
+          <div class="pb-item">All-in cost <span>-$${p.totalCostPerCard.toFixed(2)}</span></div>
+          <div class="pb-item">Net profit <span style="font-weight:600;color:${p.actualProfit>0?'var(--green)':'var(--red)'};">${sign}$${Math.abs(p.actualProfit).toFixed(2)}</span></div>
+        </div>
+      </div>`}
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function exportPSALog() {
+  if (!psaLog.length) return;
+  const rows = [['Card','Date','Raw Price','Grade Cost','Ship/Card','Total Cost','PSA 10 Price','PSA 9 Price','PSA 8 Price','Hit Rate %','Break Even','Actual Grade','Sold Price','Actual Profit','Status']];
+  psaLog.forEach(p => {
+    rows.push([`"${p.name}"`, p.date, p.raw, p.gradeCost, p.shipPerCard.toFixed(2), p.totalCostPerCard.toFixed(2), p.p10||'', p.p9||'', p.p8||'', p.hitRate, p.breakEven, p.actualGrade||'', p.soldPrice||'', p.actualProfit!==null?p.actualProfit.toFixed(2):'', p.status]);
+  });
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `psa-flips-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+// ─── Currency Converter ───────────────────────────────────────────────────────
+let fxRate = null; // JPY to USD rate
+let fxRateLoaded = false;
+
+async function loadExchangeRate() {
+  if(fxRateLoaded) return;
+  const el = document.getElementById('fx-rate-display');
+  try {
+    const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+    if(!res.ok) throw new Error();
+    const data = await res.json();
+    const jpyPerUsd = data.rates['JPY'];
+    if(!jpyPerUsd) throw new Error();
+    fxRate = 1 / jpyPerUsd; // USD per JPY
+    fxRateLoaded = true;
+    el.textContent = `Live rate: ¥1 = $${fxRate.toFixed(6)} · $1 = ¥${jpyPerUsd.toFixed(2)}`;
+    renderQuickReference(jpyPerUsd);
+  } catch(e) {
+    // Fallback to approximate rate
+    fxRate = 1 / 155;
+    el.textContent = `Approx rate: ¥1 = $${fxRate.toFixed(6)} (offline fallback)`;
+    renderQuickReference(155);
+  }
+}
+
+function convertCurrency() {
+  if(!fxRate) return;
+  const yen = parseFloat(document.getElementById('fx-yen').value) || 0;
+  const usd = yen * fxRate;
+  document.getElementById('fx-usd').value = usd > 0 ? usd.toFixed(2) : '';
+  document.getElementById('fx-result').textContent = yen > 0 ? `¥${yen.toLocaleString()} = $${usd.toFixed(2)} USD` : '';
+  calcDistributor();
+}
+
+function convertCurrencyReverse() {
+  if(!fxRate) return;
+  const usd = parseFloat(document.getElementById('fx-usd').value) || 0;
+  const yen = usd / fxRate;
+  document.getElementById('fx-yen').value = yen > 0 ? Math.round(yen) : '';
+  document.getElementById('fx-result').textContent = usd > 0 ? `$${usd.toFixed(2)} USD = ¥${Math.round(yen).toLocaleString()}` : '';
+}
+
+function calcDistributor() {
+  if(!fxRate) return;
+  const boxYen = parseFloat(document.getElementById('fx-box-yen').value) || 0;
+  const qty = Math.max(1, parseInt(document.getElementById('fx-box-qty').value) || 1);
+  const shipUsd = parseFloat(document.getElementById('fx-box-ship').value) || 0;
+  const el = document.getElementById('fx-dist-result');
+  if(!boxYen) { el.innerHTML = ''; return; }
+
+  const boxUsd = boxYen * fxRate;
+  const totalUsd = (boxUsd * qty) + shipUsd;
+  const costPerBox = totalUsd / qty;
+  const shipPerBox = shipUsd / qty;
+
+  el.innerHTML = `
+  <div class="profit-bar neutral" style="flex-direction:column;align-items:flex-start;gap:10px;">
+    <div style="display:flex;gap:24px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Per box (¥→$)</div>
+        <div style="font-size:18px;font-weight:600;">$${boxUsd.toFixed(2)}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Ship per box</div>
+        <div style="font-size:18px;font-weight:600;">$${shipPerBox.toFixed(2)}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Total cost per box</div>
+        <div style="font-size:18px;font-weight:600;color:var(--accent);">$${costPerBox.toFixed(2)}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Total for ${qty} box${qty>1?'es':''}</div>
+        <div style="font-size:18px;font-weight:600;">$${totalUsd.toFixed(2)}</div>
+      </div>
+    </div>
+    <div class="profit-breakdown">
+      <div class="pb-item">¥${Math.round(boxYen).toLocaleString()}/box <span>= $${boxUsd.toFixed(2)}</span></div>
+      <div class="pb-item">×${qty} boxes <span>= $${(boxUsd*qty).toFixed(2)}</span></div>
+      <div class="pb-item">+ Shipping <span>$${shipUsd.toFixed(2)}</span></div>
+    </div>
+  </div>`;
+}
+
+function renderQuickReference(jpyPerUsd) {
+  const el = document.getElementById('fx-quick');
+  const prices = [
+    {label:'Budget box',yen:3500},
+    {label:'Standard box',yen:6000},
+    {label:'Mid box',yen:8000},
+    {label:'Premium box',yen:12000},
+    {label:'High-end box',yen:15000},
+    {label:'Elite box',yen:20000},
+  ];
+  let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
+  prices.forEach(p=>{
+    const usd = p.yen / jpyPerUsd;
+    html += `<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 12px;">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">${p.label}</div>
+      <div style="font-size:13px;color:var(--text2);">¥${p.yen.toLocaleString()}</div>
+      <div style="font-size:16px;font-weight:600;">$${usd.toFixed(2)}</div>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
